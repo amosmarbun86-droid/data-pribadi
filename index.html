@@ -5,10 +5,16 @@
 <title>Pusat Data Saya</title>
 
 <style>
+
 body{
 font-family:Arial;
 background:#f0f0f0;
 padding:20px;
+margin:0;
+}
+
+h1,h2{
+text-align:center;
 }
 
 .card{
@@ -16,18 +22,59 @@ background:white;
 padding:15px;
 margin:10px 0;
 border-radius:10px;
-box-shadow:0 0 5px rgba(0,0,0,0.2);
+box-shadow:0 0 8px rgba(0,0,0,0.15);
 }
 
 input,button{
-padding:10px;
+padding:12px;
 margin:5px 0;
 width:100%;
+border-radius:8px;
+border:1px solid #ccc;
+font-size:16px;
 }
+
+button{
+background:#2563eb;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+button:hover{
+background:#1d4ed8;
+}
+
+/* LOGIN BOX */
+#loginBox{
+max-width:350px;
+margin:80px auto;
+background:white;
+padding:20px;
+border-radius:12px;
+box-shadow:0 0 10px rgba(0,0,0,0.2);
+text-align:center;
+}
+
+#error{
+color:red;
+}
+
 </style>
 </head>
 
 <body>
+
+<!-- LOGIN -->
+<div id="loginBox">
+<h2>🔒 Akses Data Pribadi</h2>
+<input type="password" id="pass" placeholder="Masukkan Password">
+<button onclick="cekPassword()">Masuk</button>
+<p id="error"></p>
+</div>
+
+<!-- CONTENT WEBSITE -->
+<div id="content" style="display:none;">
 
 <h1>📂 Pusat Data Pribadi</h1>
 
@@ -61,6 +108,26 @@ width="100%" height="300">
 
 </div>
 
+</div>
+
+<!-- PASSWORD SCRIPT -->
+<script>
+function cekPassword(){
+
+const password = document.getElementById("pass").value;
+
+/* GANTI PASSWORD DI SINI */
+if(password === "Amosrcp86#"){
+document.getElementById("loginBox").style.display="none";
+document.getElementById("content").style.display="block";
+}else{
+document.getElementById("error").innerText="Password salah!";
+}
+
+}
+</script>
+
+
 <!-- FIREBASE -->
 <script type="module">
 
@@ -73,20 +140,20 @@ getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
-  authDomain: "data-pribadi-9cfe6.firebaseapp.com",
-  projectId: "data-pribadi-9cfe6",
-  storageBucket: "data-pribadi-9cfe6.firebasestorage.app",
-  messagingSenderId: "615916680811",
-  appId: "1:615916680811:web:e098080afdf8078b74632e",
-  measurementId: "G-K95HF8C430"
+apiKey: "AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
+authDomain: "data-pribadi-9cfe6.firebaseapp.com",
+projectId: "data-pribadi-9cfe6",
+storageBucket: "data-pribadi-9cfe6.firebasestorage.app",
+messagingSenderId: "615916680811",
+appId: "1:615916680811:web:e098080afdf8078b74632e",
+measurementId: "G-K95HF8C430"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 
-// SIMPAN DATA KE FIREBASE
+// SIMPAN DATA
 window.simpanKontakOnline = async function(){
 
 await addDoc(collection(db,"kontak"),{
@@ -96,12 +163,17 @@ email:email.value
 });
 
 alert("✅ Kontak tersimpan online!");
+
+nama.value="";
+hp.value="";
+email.value="";
+
 tampil();
 
 }
 
 
-// AMBIL DATA DARI FIREBASE
+// TAMPILKAN DATA
 async function tampil(){
 
 hasil.innerHTML="Memuat data...";
