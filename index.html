@@ -37,7 +37,7 @@ width:100%;
 <input id="nama" placeholder="Nama">
 <input id="hp" placeholder="Nomor HP">
 <input id="email" placeholder="Email">
-<button onclick="simpanKontak()">Simpan</button>
+<button onclick="simpanKontakOnline()">Simpan</button>
 </div>
 
 <div id="hasil"></div>
@@ -61,33 +61,68 @@ width="100%" height="300">
 
 </div>
 
-<script>
+<!-- FIREBASE -->
+<script type="module">
 
-function simpanKontak(){
-let data = JSON.parse(localStorage.getItem("kontak")) || [];
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+getFirestore,
+collection,
+addDoc,
+getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-data.push({
+const firebaseConfig = {
+  apiKey: "AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
+  authDomain: "data-pribadi-9cfe6.firebaseapp.com",
+  projectId: "data-pribadi-9cfe6",
+  storageBucket: "data-pribadi-9cfe6.firebasestorage.app",
+  messagingSenderId: "615916680811",
+  appId: "1:615916680811:web:e098080afdf8078b74632e",
+  measurementId: "G-K95HF8C430"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+
+// SIMPAN DATA KE FIREBASE
+window.simpanKontakOnline = async function(){
+
+await addDoc(collection(db,"kontak"),{
 nama:nama.value,
 hp:hp.value,
 email:email.value
 });
 
-localStorage.setItem("kontak",JSON.stringify(data));
+alert("✅ Kontak tersimpan online!");
 tampil();
+
 }
 
-function tampil(){
-let data = JSON.parse(localStorage.getItem("kontak")) || [];
+
+// AMBIL DATA DARI FIREBASE
+async function tampil(){
+
+hasil.innerHTML="Memuat data...";
+
+const querySnapshot = await getDocs(collection(db,"kontak"));
+
 hasil.innerHTML="";
 
-data.forEach(k=>{
-hasil.innerHTML+=`
+querySnapshot.forEach(doc => {
+
+let k = doc.data();
+
+hasil.innerHTML += `
 <div class="card">
 <b>${k.nama}</b><br>
 ${k.hp}<br>
 ${k.email}
 </div>`;
+
 });
+
 }
 
 tampil();
