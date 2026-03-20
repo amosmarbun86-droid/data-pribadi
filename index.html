@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pusat Data Saya</title>
+
+<style>
+body{
+font-family:Arial;
+background:#f0f0f0;
+padding:20px;
+}
+
+.card{
+background:white;
+padding:15px;
+margin:10px 0;
+border-radius:10px;
+box-shadow:0 0 5px rgba(0,0,0,0.2);
+}
+
+input,button{
+padding:10px;
+margin:5px 0;
+width:100%;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📂 Pusat Data Pribadi</h1>
+
+<h2>📒 Simpan Kontak</h2>
+
+<div class="card">
+<input id="nama" placeholder="Nama">
+<input id="hp" placeholder="Nomor HP">
+<input id="email" placeholder="Email">
+<button onclick="simpanKontak()">Simpan</button>
+</div>
+
+<div id="hasil"></div>
+
+<hr>
+
+<h2>📁 File Penting</h2>
+
+<div class="card">
+
+<iframe
+src="https://drive.google.com/file/d/1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa/preview"
+width="100%" height="300">
+</iframe>
+
+<br><br>
+
+<a href="https://drive.google.com/uc?export=download&id=1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa">
+<button>Download File</button>
+</a>
+
+</div>
+
+<script>
+
+function simpanKontak(){
+let data = JSON.parse(localStorage.getItem("kontak")) || [];
+
+data.push({
+nama:nama.value,
+hp:hp.value,
+email:email.value
+});
+
+localStorage.setItem("kontak",JSON.stringify(data));
+tampil();
+}
+
+function tampil(){
+let data = JSON.parse(localStorage.getItem("kontak")) || [];
+hasil.innerHTML="";
+
+data.forEach(k=>{
+hasil.innerHTML+=`
+<div class="card">
+<b>${k.nama}</b><br>
+${k.hp}<br>
+${k.email}
+</div>`;
+});
+}
+
+tampil();
+
+</script>
+
+</body>
+</html>
