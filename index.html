@@ -2,7 +2,10 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pusat Data Pribadi</title>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <style>
 body{
@@ -57,7 +60,8 @@ border-radius:8px;
 text-decoration:none;
 }
 
-/* LOGIN */
+progress{width:100%;height:10px;}
+
 #loginBox{
 max-width:350px;
 margin:80px auto;
@@ -69,6 +73,7 @@ text-align:center;
 }
 
 #error{color:red;}
+canvas{margin-top:10px;}
 </style>
 </head>
 
@@ -82,11 +87,12 @@ text-align:center;
 <p id="error"></p>
 </div>
 
-<!-- WEBSITE -->
+<!-- CONTENT -->
 <div id="content" style="display:none;">
 
 <h1>📂 Pusat Data Pribadi</h1>
 
+<!-- ================= KONTAK ================= -->
 <h2>📒 Simpan Kontak</h2>
 
 <div class="card">
@@ -100,6 +106,7 @@ text-align:center;
 
 <hr>
 
+<!-- ================= FILE DRIVE ================= -->
 <h2>📁 File Penting</h2>
 
 <div class="card">
@@ -116,15 +123,16 @@ width="100%" height="300"></iframe>
 
 <hr>
 
+<!-- ================= UPLOAD MEDIA ================= -->
 <h2>📸 Upload Foto & Video</h2>
 
 <div class="card">
 
-<input type="file" id="fileInput"
-accept="image/*,video/*"
-capture="environment">
+<input type="file" id="fileInput" accept="image/*,video/*" capture="environment">
 
 <div id="preview"></div>
+
+<progress id="progress" value="0" max="100"></progress>
 
 <button onclick="uploadFile()">Upload</button>
 
@@ -133,19 +141,44 @@ capture="environment">
 
 </div>
 
+<hr>
+
+<!-- ================= FILE TRANSFER PRO ================= -->
+<h2>📤 File Transfer PRO</h2>
+
+<div class="card">
+
+<input type="file" id="transferInput">
+
+<button onclick="transferFile()">Upload & Generate Link</button>
+
+<progress id="transferProgress" value="0" max="100"></progress>
+
+<div id="transferResult"></div>
+
+<canvas id="qrcode"></canvas>
+
 </div>
 
-<!-- PASSWORD -->
+</div>
+
+<!-- LOGIN SCRIPT -->
 <script>
 function cekPassword(){
-const password=document.getElementById("pass").value;
+const password=pass.value;
 
 if(password==="Amosrcp86#"){
+localStorage.setItem("login","true");
 loginBox.style.display="none";
 content.style.display="block";
 }else{
 error.innerText="Password salah!";
 }
+}
+
+if(localStorage.getItem("login")==="true"){
+loginBox.style.display="none";
+content.style.display="block";
 }
 </script>
 
@@ -170,7 +203,6 @@ const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
 window.simpanKontakOnline=async function(){
-
 await addDoc(collection(db,"kontak"),{
 nama:nama.value,
 hp:hp.value,
@@ -178,25 +210,18 @@ email:email.value
 });
 
 alert("✅ Kontak tersimpan!");
-
 nama.value="";
 hp.value="";
 email.value="";
-
 tampil();
 }
 
 async function tampil(){
-
-hasil.innerHTML="Memuat...";
-
-const querySnapshot=await getDocs(collection(db,"kontak"));
-
 hasil.innerHTML="";
+const querySnapshot=await getDocs(collection(db,"kontak"));
 
 querySnapshot.forEach(doc=>{
 let k=doc.data();
-
 hasil.innerHTML+=`
 <div class="card">
 <b>${k.nama}</b><br>
@@ -209,7 +234,7 @@ ${k.email}
 tampil();
 </script>
 
-<!-- CLOUDINARY UPLOAD -->
+<!-- CLOUDINARY -->
 <script>
 
 const CLOUD_NAME="dkisbfx29";
@@ -218,7 +243,6 @@ const UPLOAD_PRESET="ml_default";
 let selectedFile;
 
 fileInput.addEventListener("change",(e)=>{
-
 selectedFile=e.target.files[0];
 preview.innerHTML="";
 
@@ -227,35 +251,38 @@ preview.innerHTML=`<img src="${URL.createObjectURL(selectedFile)}">`;
 }else{
 preview.innerHTML=`<video controls src="${URL.createObjectURL(selectedFile)}"></video>`;
 }
-
 });
 
-async function uploadFile(){
+function uploadFile(){
 
-if(!selectedFile){
-alert("Pilih file dulu!");
-return;
-}
+if(!selectedFile)return alert("Pilih file!");
+
+const url=`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`;
 
 const formData=new FormData();
 formData.append("file",selectedFile);
 formData.append("upload_preset",UPLOAD_PRESET);
 
-const res=await fetch(
-`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
-{
-method:"POST",
-body:formData
-});
+const xhr=new XMLHttpRequest();
+xhr.open("POST",url,true);
 
-const data=await res.json();
+xhr.upload.onprogress=e=>{
+if(e.lengthComputable){
+progress.value=(e.loaded/e.total)*100;
+}
+};
 
-alert("✅ Upload berhasil!");
+xhr.onload=()=>{
+const data=JSON.parse(xhr.responseText);
 
 tambahGallery(data.secure_url,selectedFile.type);
 
+progress.value=0;
 preview.innerHTML="";
 fileInput.value="";
+};
+
+xhr.send(formData);
 }
 
 function tambahGallery(url,type){
@@ -284,6 +311,52 @@ box.appendChild(media);
 box.appendChild(download);
 
 gallery.prepend(box);
+}
+
+/* ================= FILE TRANSFER PRO ================= */
+
+function transferFile(){
+
+const file=transferInput.files[0];
+if(!file)return alert("Pilih file!");
+
+const url=`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`;
+
+const formData=new FormData();
+formData.append("file",file);
+formData.append("upload_preset",UPLOAD_PRESET);
+
+const xhr=new XMLHttpRequest();
+xhr.open("POST",url,true);
+
+xhr.upload.onprogress=e=>{
+if(e.lengthComputable){
+transferProgress.value=(e.loaded/e.total)*100;
+}
+};
+
+xhr.onload=()=>{
+const res=JSON.parse(xhr.responseText);
+const link=res.secure_url;
+
+transferResult.innerHTML=`
+✅ Link siap:<br>
+<a href="${link}" target="_blank">${link}</a>
+<button onclick="copyLink('${link}')">Copy Link</button>
+`;
+
+QRCode.toCanvas(document.getElementById("qrcode"),link);
+
+transferProgress.value=0;
+transferInput.value="";
+};
+
+xhr.send(formData);
+}
+
+function copyLink(link){
+navigator.clipboard.writeText(link);
+alert("Link disalin!");
 }
 
 </script>
