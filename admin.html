@@ -1,236 +1,198 @@
-<!DOCTYPE html>  <html>  
-<head>  
-<meta charset="UTF-8">  
-<meta name="viewport" content="width=device-width,initial-scale=1">  
-<title>Admin Panel Secure</title>  <style>  
-body{  
-font-family:Arial;  
-background:#0f172a;  
-color:white;  
-margin:0;  
-}  
-  
-/* LOGIN */  
-#loginBox{  
-height:100vh;  
-display:flex;  
-justify-content:center;  
-align-items:center;  
-}  
-  
-.login-card{  
-background:#1e293b;  
-padding:30px;  
-border-radius:12px;  
-width:300px;  
-text-align:center;  
-}  
-  
-input{  
-width:100%;  
-padding:10px;  
-margin:10px 0;  
-border:none;  
-border-radius:8px;  
-}  
-  
-button{  
-padding:10px;  
-margin:5px 0;  
-width:100%;  
-border:none;  
-border-radius:8px;  
-background:#22c55e;  
-color:white;  
-font-weight:bold;  
-cursor:pointer;  
-}  
-  
-button:hover{  
-background:#16a34a;  
-}  
-  
-.danger{  
-background:#ef4444;  
-}  
-  
-.danger:hover{  
-background:#dc2626;  
-}  
-  
-/* PANEL */  
-#adminPanel{  
-display:none;  
-padding:20px;  
-}  
-  
-.card{  
-background:#1e293b;  
-padding:15px;  
-margin-bottom:15px;  
-border-radius:10px;  
-}  
-  
-.device{  
-background:#334155;  
-padding:10px;  
-margin:8px 0;  
-border-radius:8px;  
-}  
-</style>  </head>  <body>  <!-- LOGIN -->  <div id="loginBox">  
-<div class="login-card">  <h2>🔐 Admin Login</h2>  <input id="user" placeholder="Ops787955">  
-<input id="pass" type="password" placeholder="Amosrcp86#">  <button onclick="login()">LOGIN</button>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<p id="error" style="color:red"></p>  </div>  
-</div>  <!-- ADMIN PANEL -->  <div id="adminPanel">  <h2>⚙️ Device Admin Panel</h2>  <div class="card">  
-<h3>Device Access Control</h3>  <button onclick="addDevice()">➕ Tambah Device</button>
-<button onclick="renderDevices()">📱 Refresh Device</button>
+<title>Admin Panel</title>
 
-<div id="deviceList"></div>  </div>  <div class="card">  
-<h3>Security Status</h3>  
-<p id="status">System Secure ✅</p>  
-</div>  <button class="danger" onclick="logout()">Logout</button>
+<style>
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+padding:20px;
+margin:0;
+}
+h1{margin-bottom:10px;}
+.card{
+background:#1e293b;
+padding:15px;
+margin:10px 0;
+border-radius:12px;
+}
+button{
+width:100%;
+padding:10px;
+margin-top:5px;
+border:none;
+border-radius:8px;
+font-size:15px;
+}
+.green{background:#22c55e;color:white;}
+.red{background:#ef4444;color:white;}
+.gray{background:#334155;color:white;}
+textarea{
+width:100%;
+border-radius:8px;
+padding:10px;
+margin-top:5px;
+}
+</style>
+</head>
 
-</div>  <script>  
-  
-/* ======================  
-   ADMIN ACCOUNT  
-====================== */  
-  
-const ADMIN_USER="Ops787955";  
-const ADMIN_PASS="Amosrcp86#";  
-  
-/* ======================  
-   AUTO LOGIN  
-====================== */  
-  
-if(localStorage.getItem("adminLogin")=="true"){  
-showAdmin();  
-}  
-  
-/* ======================  
-   LOGIN  
-====================== */  
-  
-function login(){  
-  
-let u=user.value;  
-let p=pass.value;  
-  
-if(u===ADMIN_USER && p===ADMIN_PASS){  
-localStorage.setItem("adminLogin","true");  
-showAdmin();  
-}else{  
-error.innerText="Login Salah!";  
-}  
-  
-}  
-  
-/* ======================  
-   SHOW PANEL  
-====================== */  
-  
-function showAdmin(){  
-loginBox.style.display="none";  
-adminPanel.style.display="block";  
-renderDevices();  
-}  
-  
-/* ======================  
-   LOGOUT  
-====================== */  
-  
-function logout(){  
-localStorage.removeItem("adminLogin");  
-location.reload();  
-}  
-  
-/* ======================  
-   DEVICE SYSTEM  
-====================== */  
-  
-function getDevices(){  
-return JSON.parse(localStorage.getItem("devices")||"[]");  
-}  
-  
-function saveDevices(data){  
-localStorage.setItem("devices",JSON.stringify(data));  
-}  
-  
-/* TAMBAH DEVICE */  
-  
-function addDevice(){  
-  
-let devices=getDevices();  
-  
-let id="DEV-"+Date.now();  
-  
-devices.push({  
-id:id,  
-status:"active"  
-});  
-  
-saveDevices(devices);  
-  
-renderDevices();  
-  
-alert("Device berhasil ditambahkan");  
-}  
-  
-/* BAN DEVICE */  
-  
-function banDevice(id){  
-  
-let devices=getDevices();  
-  
-devices=devices.map(d=>{  
-if(d.id===id){ d.status="banned"; }  
-return d;  
-});  
-  
-saveDevices(devices);  
-renderDevices();  
-}  
-  
-/* HAPUS DEVICE */  
-  
-function deleteDevice(id){  
-  
-let devices=getDevices().filter(d=>d.id!==id);  
-  
-saveDevices(devices);  
-renderDevices();  
-}  
-  
-/* TAMPILKAN DEVICE */  
-  
-function renderDevices(){  
-  
-let devices=getDevices();  
-  
-let html="";  
-  
-if(devices.length==0){  
-html="<p>Tidak ada device</p>";  
-}  
-  
-devices.forEach(d=>{  
-  
-html+=`  
-<div class="device">  
-<b>${d.id}</b><br>  
-Status: ${d.status}  
-  
-<button onclick="banDevice('${d.id}')" class="danger">Ban</button>  
-<button onclick="deleteDevice('${d.id}')">Hapus</button>  
-</div>  
-`;  
-  
-});  
-  
-deviceList.innerHTML=html;  
-}  
-  
-</script>  </body>  
-</html>   
-Mana tidak bisa login admin
+<body>
+
+<h1>⚙️ Admin Panel</h1>
+
+<!-- DEVICE CONTROL -->
+<div class="card">
+<h2>📱 Device Control</h2>
+
+<input id="deviceInput" placeholder="Masukkan Device ID">
+
+<button class="green" onclick="approve()">✅ Approve</button>
+<button class="red" onclick="ban()">⛔ Ban</button>
+<button class="gray" onclick="hapusDevice()">🗑 Hapus Device</button>
+
+<hr>
+
+<h3>📋 List Device</h3>
+<div id="deviceList">Loading...</div>
+</div>
+
+<!-- USER DATA -->
+<div class="card">
+<h2>📊 Data User (Realtime)</h2>
+<div id="userList">Loading...</div>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+getFirestore,
+collection,
+onSnapshot,
+doc,
+setDoc,
+deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* 🔥 CONFIG */
+const firebaseConfig={
+apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
+authDomain:"data-pribadi-9cfe6.firebaseapp.com",
+projectId:"data-pribadi-9cfe6"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+/* =========================
+   DEVICE CONTROL
+========================= */
+
+window.approve=async()=>{
+const id=deviceInput.value.trim();
+if(!id)return alert("Isi Device ID");
+
+await setDoc(doc(db,"devices",id),{
+status:"approved",
+role:"user"
+});
+
+alert("✅ Device Approved");
+}
+
+window.ban=async()=>{
+const id=deviceInput.value.trim();
+if(!id)return alert("Isi Device ID");
+
+await setDoc(doc(db,"devices",id),{
+status:"banned"
+});
+
+alert("⛔ Device Banned");
+}
+
+window.hapusDevice=async()=>{
+const id=deviceInput.value.trim();
+if(!id)return alert("Isi Device ID");
+
+if(confirm("Hapus device ini?")){
+await deleteDoc(doc(db,"devices",id));
+alert("🗑 Device dihapus");
+}
+}
+
+/* =========================
+   REALTIME DEVICE LIST
+========================= */
+
+function loadDevices(){
+const box=document.getElementById("deviceList");
+
+onSnapshot(collection(db,"devices"),(snap)=>{
+box.innerHTML="";
+
+snap.forEach(d=>{
+let data=d.data();
+
+box.innerHTML+=`
+<div class="card">
+📱 ${d.id}<br>
+Status: ${data.status}<br>
+
+<button onclick="isi('${d.id}')">Pilih</button>
+</div>
+`;
+});
+});
+}
+
+window.isi=(id)=>{
+deviceInput.value=id;
+}
+
+/* =========================
+   REALTIME USER DATA
+========================= */
+
+function loadUsers(){
+const box=document.getElementById("userList");
+
+onSnapshot(collection(db,"kontak"),(snap)=>{
+box.innerHTML="";
+
+snap.forEach(d=>{
+let u=d.data();
+
+box.innerHTML+=`
+<div class="card">
+<b>👤 ${u.nama}</b><br>
+📞 ${u.hp}<br>
+📧 ${u.email}<br><br>
+
+<button class="red" onclick="hapusUser('${d.id}')">Hapus</button>
+</div>
+`;
+});
+});
+}
+
+window.hapusUser=async(id)=>{
+if(confirm("Hapus data user?")){
+await deleteDoc(doc(db,"kontak",id));
+}
+}
+
+/* LOAD */
+loadDevices();
+loadUsers();
+
+</script>
+
+</body>
+</html>
