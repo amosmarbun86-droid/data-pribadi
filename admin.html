@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Admin Device Panel</title>
+
+<style>
+body{
+font-family:Arial;
+background:#f0f0f0;
+padding:20px;
+}
+
+.box{
+background:white;
+padding:20px;
+border-radius:12px;
+max-width:400px;
+margin:auto;
+box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+
+input,button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border-radius:8px;
+border:1px solid #ccc;
+font-size:16px;
+}
+
+button{
+background:#2563eb;
+color:white;
+border:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h2>👨‍💼 Admin Device Control</h2>
+
+<input id="device" placeholder="Paste Device ID">
+
+<button onclick="approve()">✅ Approve</button>
+<button onclick="ban()">⛔ Ban</button>
+
+<p id="info"></p>
+
+</div>
+
+<script type="module">
+
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+getFirestore,
+doc,
+setDoc
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
+authDomain:"data-pribadi-9cfe6.firebaseapp.com",
+projectId:"data-pribadi-9cfe6"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+window.approve=async()=>{
+await setDoc(doc(db,"devices",device.value),{
+status:"approved",
+time:Date.now()
+});
+info.innerText="✅ Device Approved";
+}
+
+window.ban=async()=>{
+await setDoc(doc(db,"devices",device.value),{
+status:"banned"
+});
+info.innerText="⛔ Device Banned";
+}
+
+</script>
+
+</body>
+</html>
