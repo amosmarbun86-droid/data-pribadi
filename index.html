@@ -2,139 +2,85 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pusat Data Pribadi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<title>Admin Panel</title>
 
 <style>
-body{font-family:Arial;background:#f0f0f0;padding:20px;margin:0;}
-h1,h2{text-align:center;}
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+padding:20px;
+margin:0;
+}
+h1{margin-bottom:10px;}
 .card{
-background:white;padding:15px;margin:10px 0;
-border-radius:10px;box-shadow:0 0 8px rgba(0,0,0,0.15);
+background:#1e293b;
+padding:15px;
+margin:10px 0;
+border-radius:12px;
 }
-input,button{
-padding:12px;margin:5px 0;width:100%;
-border-radius:8px;border:1px solid #ccc;font-size:16px;
+button{
+width:100%;
+padding:10px;
+margin-top:5px;
+border:none;
+border-radius:8px;
+font-size:15px;
 }
-button{background:#2563eb;color:white;border:none;}
-button:hover{background:#1d4ed8;}
-.media img,.media video{width:100%;border-radius:10px;margin-top:10px;}
-.download{
-display:block;text-align:center;background:#16a34a;
-color:white;padding:10px;margin-top:8px;border-radius:8px;text-decoration:none;
+.green{background:#22c55e;color:white;}
+.red{background:#ef4444;color:white;}
+.gray{background:#334155;color:white;}
+textarea{
+width:100%;
+border-radius:8px;
+padding:10px;
+margin-top:5px;
 }
-progress{width:100%;height:10px;}
-#loginBox{
-max-width:350px;margin:80px auto;background:white;
-padding:20px;border-radius:12px;
-box-shadow:0 0 10px rgba(0,0,0,0.2);text-align:center;
-}
-#error{color:red;}
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
-<div id="loginBox">
-<h2>🔒 Akses Data Pribadi</h2>
-<input type="password" id="pass" placeholder="Masukkan Password">
-<button onclick="cekPassword()">Masuk</button>
-<p id="error"></p>
-</div>
+<h1>⚙️ Admin Panel</h1>
 
-<!-- CONTENT -->
-<div id="content" style="display:none;">
-
-<h1>📂 Pusat Data Pribadi</h1>
-
-<h2>📒 Simpan Kontak</h2>
-
+<!-- DEVICE CONTROL -->
 <div class="card">
-<input id="nama" placeholder="Nama">
-<input id="hp" placeholder="Nomor HP">
-<input id="email" placeholder="Email">
-<button onclick="simpanKontakOnline()">Simpan</button>
-</div>
+<h2>📱 Device Control</h2>
 
-<div id="hasil"></div>
+<input id="deviceInput" placeholder="Masukkan Device ID">
+
+<button class="green" onclick="approve()">✅ Approve</button>
+<button class="red" onclick="ban()">⛔ Ban</button>
+<button class="gray" onclick="hapusDevice()">🗑 Hapus Device</button>
 
 <hr>
 
-<h2>📁 File Penting</h2>
+<h3>📋 List Device</h3>
+<div id="deviceList">Loading...</div>
+</div>
 
+<!-- USER DATA -->
 <div class="card">
-<iframe src="https://drive.google.com/file/d/1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa/preview"
-width="100%" height="300"></iframe>
-
-<a href="https://drive.google.com/uc?export=download&id=1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa">
-<button>Download File</button>
-</a>
+<h2>📊 Data User (Realtime)</h2>
+<div id="userList">Loading...</div>
 </div>
 
-<hr>
-
-<h2>📸 Upload Foto & Video</h2>
-
-<div class="card">
-<input type="file" id="fileInput" accept="image/*,video/*" capture="environment">
-<div id="preview"></div>
-<progress id="progress" value="0" max="100"></progress>
-<button onclick="uploadFile()">Upload</button>
-
-<h3>Gallery</h3>
-<div id="gallery"></div>
-</div>
-
-<hr>
-
-<h2>📤 File Transfer PRO</h2>
-
-<div class="card">
-<input type="file" id="transferInput">
-<button onclick="transferFile()">Upload & Generate Link</button>
-<progress id="transferProgress" value="0" max="100"></progress>
-<div id="transferResult"></div>
-<canvas id="qrcode"></canvas>
-</div>
-
-</div>
-
-<!-- LOGIN -->
-<script>
-function cekPassword(){
-if(pass.value==="Amosrcp86#"){
-localStorage.setItem("login","true");
-loginBox.style.display="none";
-content.style.display="block";
-}else error.innerText="Password salah!";
-}
-
-if(localStorage.getItem("login")==="true"){
-loginBox.style.display="none";
-content.style.display="block";
-}
-</script>
-
-<!-- FIREBASE + DEVICE SECURITY -->
 <script type="module">
 
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 import {
 getFirestore,
 collection,
-addDoc,
-getDocs,
+onSnapshot,
 doc,
-getDoc,
-setDoc
-}
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+setDoc,
+deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+/* 🔥 CONFIG */
 const firebaseConfig={
 apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
 authDomain:"data-pribadi-9cfe6.firebaseapp.com",
@@ -144,170 +90,107 @@ projectId:"data-pribadi-9cfe6"
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
-/* ========= DEVICE SECURITY ========= */
+/* =========================
+   DEVICE CONTROL
+========================= */
 
-function getDeviceID(){
-let id=localStorage.getItem("device_id");
-if(!id){
-id=crypto.randomUUID();
-localStorage.setItem("device_id",id);
-}
-return id;
-}
+window.approve=async()=>{
+const id=deviceInput.value.trim();
+if(!id)return alert("Isi Device ID");
 
-async function checkDevice(){
-
-const id=getDeviceID();
-const ref=doc(db,"devices",id);
-const snap=await getDoc(ref);
-
-if(!snap.exists()){
-document.body.innerHTML=`
-<div style="text-align:center;padding:40px">
-<h2>🔒 Device Belum Diizinkan</h2>
-<textarea style="width:100%;height:80px">${id}</textarea>
-<p>Kirim ID ini ke Admin</p>
-</div>`;
-return;
-}
-
-if(snap.data().status==="banned"){
-document.body.innerHTML="<h2 style='text-align:center'>⛔ Device Diblokir</h2>";
-return;
-}
-
-if(snap.data().status!=="approved"){
-document.body.innerHTML="<h2 style='text-align:center'>⌛ Menunggu Approval Admin...</h2>";
-return;
-}
-
-}
-
-checkDevice();
-
-/* ========= KONTAK ========= */
-
-window.simpanKontakOnline=async()=>{
-await addDoc(collection(db,"kontak"),{
-nama:nama.value,
-hp:hp.value,
-email:email.value
+await setDoc(doc(db,"devices",id),{
+status:"approved",
+role:"user"
 });
-alert("✅ Kontak tersimpan");
-nama.value="";hp.value="";email.value="";
-tampil();
+
+alert("✅ Device Approved");
 }
 
-async function tampil(){
-hasil.innerHTML="";
-const snap=await getDocs(collection(db,"kontak"));
+window.ban=async()=>{
+const id=deviceInput.value.trim();
+if(!id)return alert("Isi Device ID");
+
+await setDoc(doc(db,"devices",id),{
+status:"banned"
+});
+
+alert("⛔ Device Banned");
+}
+
+window.hapusDevice=async()=>{
+const id=deviceInput.value.trim();
+if(!id)return alert("Isi Device ID");
+
+if(confirm("Hapus device ini?")){
+await deleteDoc(doc(db,"devices",id));
+alert("🗑 Device dihapus");
+}
+}
+
+/* =========================
+   REALTIME DEVICE LIST
+========================= */
+
+function loadDevices(){
+const box=document.getElementById("deviceList");
+
+onSnapshot(collection(db,"devices"),(snap)=>{
+box.innerHTML="";
+
 snap.forEach(d=>{
-let k=d.data();
-hasil.innerHTML+=`
+let data=d.data();
+
+box.innerHTML+=`
 <div class="card">
-<b>${k.nama}</b><br>${k.hp}<br>${k.email}
-</div>`;
+📱 ${d.id}<br>
+Status: ${data.status}<br>
+
+<button onclick="isi('${d.id}')">Pilih</button>
+</div>
+`;
+});
 });
 }
-tampil();
 
-</script>
-
-<!-- CLOUDINARY + TRANSFER -->
-<script>
-
-const CLOUD_NAME="dkisbfx29";
-const UPLOAD_PRESET="ml_default";
-
-let selectedFile;
-
-fileInput.onchange=e=>{
-selectedFile=e.target.files[0];
-preview.innerHTML=selectedFile.type.startsWith("image")
-?`<img src="${URL.createObjectURL(selectedFile)}">`
-:`<video controls src="${URL.createObjectURL(selectedFile)}"></video>`;
-};
-
-function uploadFile(){
-if(!selectedFile)return alert("Pilih file!");
-
-const xhr=new XMLHttpRequest();
-xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
-
-const fd=new FormData();
-fd.append("file",selectedFile);
-fd.append("upload_preset",UPLOAD_PRESET);
-
-xhr.upload.onprogress=e=>{
-progress.value=(e.loaded/e.total)*100;
-};
-
-xhr.onload=()=>{
-const data=JSON.parse(xhr.responseText);
-tambahGallery(data.secure_url,selectedFile.type);
-progress.value=0;
-preview.innerHTML="";
-};
-
-xhr.send(fd);
+window.isi=(id)=>{
+deviceInput.value=id;
 }
 
-function tambahGallery(url,type){
-const box=document.createElement("div");
-box.className="card media";
+/* =========================
+   REALTIME USER DATA
+========================= */
 
-const media=document.createElement(type.startsWith("video")?"video":"img");
-media.src=url;
-media.controls=true;
+function loadUsers(){
+const box=document.getElementById("userList");
 
-const dl=document.createElement("a");
-dl.href=url;
-dl.className="download";
-dl.innerText="⬇ Download";
+onSnapshot(collection(db,"kontak"),(snap)=>{
+box.innerHTML="";
 
-box.appendChild(media);
-box.appendChild(dl);
-gallery.prepend(box);
+snap.forEach(d=>{
+let u=d.data();
+
+box.innerHTML+=`
+<div class="card">
+<b>👤 ${u.nama}</b><br>
+📞 ${u.hp}<br>
+📧 ${u.email}<br><br>
+
+<button class="red" onclick="hapusUser('${d.id}')">Hapus</button>
+</div>
+`;
+});
+});
 }
 
-/* FILE TRANSFER PRO */
-
-function transferFile(){
-
-const file=transferInput.files[0];
-if(!file)return alert("Pilih file!");
-
-const xhr=new XMLHttpRequest();
-xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
-
-const fd=new FormData();
-fd.append("file",file);
-fd.append("upload_preset",UPLOAD_PRESET);
-
-xhr.upload.onprogress=e=>{
-transferProgress.value=(e.loaded/e.total)*100;
-};
-
-xhr.onload=()=>{
-const res=JSON.parse(xhr.responseText);
-const link=res.secure_url;
-
-transferResult.innerHTML=
-`✅ Link:<br><a target="_blank" href="${link}">${link}</a>
-<button onclick="copyLink('${link}')">Copy</button>`;
-
-QRCode.toCanvas(qrcode,link);
-
-transferProgress.value=0;
-};
-
-xhr.send(fd);
+window.hapusUser=async(id)=>{
+if(confirm("Hapus data user?")){
+await deleteDoc(doc(db,"kontak",id));
+}
 }
 
-function copyLink(l){
-navigator.clipboard.writeText(l);
-alert("Link disalin");
-}
+/* LOAD */
+loadDevices();
+loadUsers();
 
 </script>
 
