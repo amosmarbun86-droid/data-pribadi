@@ -91,8 +91,8 @@ border-radius:8px;
 
 <h2>🔐 Admin Login</h2>
 
-<input id="user" placeholder="Ops787955">
-<input id="pass" type="password" placeholder="Amosrcp86#">
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Password">
 
 <button onclick="login()">LOGIN</button>
 
@@ -128,34 +128,34 @@ border-radius:8px;
 <script>
 
 /* ======================
-   ADMIN ACCOUNT
+   ADMIN ACCOUNT (FIXED)
 ====================== */
 
-const ADMIN_USER="admin";
-const ADMIN_PASS="Amosrcp86";
+const ADMIN_USER="Ops787955";
+const ADMIN_PASS="Amosrcp86#";
 
 /* ======================
    AUTO LOGIN
 ====================== */
 
-if(localStorage.getItem("adminLogin")=="true"){
+if(localStorage.getItem("adminLogin")==="true"){
 showAdmin();
 }
 
 /* ======================
-   LOGIN
+   LOGIN (FIXED)
 ====================== */
 
 function login(){
 
-let u=user.value;
-let p=pass.value;
+let u = document.getElementById("user").value;
+let p = document.getElementById("pass").value;
 
-if(u===ADMIN_USER && p===ADMIN_PASS){
+if(u === ADMIN_USER && p === ADMIN_PASS){
 localStorage.setItem("adminLogin","true");
 showAdmin();
 }else{
-error.innerText="Login Salah!";
+document.getElementById("error").innerText="Login Salah!";
 }
 
 }
@@ -165,8 +165,8 @@ error.innerText="Login Salah!";
 ====================== */
 
 function showAdmin(){
-loginBox.style.display="none";
-adminPanel.style.display="block";
+document.getElementById("loginBox").style.display="none";
+document.getElementById("adminPanel").style.display="block";
 renderDevices();
 }
 
@@ -180,7 +180,7 @@ location.reload();
 }
 
 /* ======================
-   DEVICE SYSTEM
+   DEVICE SYSTEM (TETAP)
 ====================== */
 
 function getDevices(){
@@ -262,7 +262,7 @@ Status: ${d.status}
 
 });
 
-deviceList.innerHTML=html;
+document.getElementById("deviceList").innerHTML=html;
 }
 
 </script>
