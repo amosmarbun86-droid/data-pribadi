@@ -65,6 +65,12 @@ padding:15px;
 margin-bottom:15px;
 border-radius:10px;
 }
+.device{
+background:#020617;
+padding:10px;
+margin:8px 0;
+border-radius:8px;
+}
 </style>
 </head>
 
@@ -90,72 +96,148 @@ border-radius:10px;
 <h2>⚙️ Device Admin Panel</h2>
 
 <div class="card">
-<h3>Device Access Control</h3>
-<p>Kelola device login pengguna.</p>
+<h3>📊 Statistik Device</h3>
+<p id="stats">Loading...</p>
 </div>
 
 <div class="card">
-<h3>Security Status</h3>
-<p id="status">System Secure ✅</p>
+<h3>📱 Device List (Realtime)</h3>
+<div id="deviceList"></div>
 </div>
 
 <button onclick="logout()">Logout</button>
 
 </div>
 
+<script src="api.js"></script>
+
 <script>
 
 /* ==============================
-   ADMIN ACCOUNT (UBAH SENDIRI)
+   ADMIN LOGIN
 ================================*/
 
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "Amosrcp86";
-
-/* ==============================
-   CHECK LOGIN SESSION
-================================*/
+const ADMIN_USER="admin";
+const ADMIN_PASS="Amosrcp86";
 
 if(localStorage.getItem("adminLogin")=="true"){
 showAdmin();
+loadDevices();
+setInterval(loadDevices,5000);
 }
-
-/* ==============================
-   LOGIN FUNCTION
-================================*/
 
 function login(){
 
-let u=document.getElementById("user").value;
-let p=document.getElementById("pass").value;
+let u=user.value;
+let p=pass.value;
 
 if(u===ADMIN_USER && p===ADMIN_PASS){
-
 localStorage.setItem("adminLogin","true");
 showAdmin();
-
+loadDevices();
+setInterval(loadDevices,5000);
 }else{
-document.getElementById("error").innerText="Login Salah!";
+error.innerText="Login Salah!";
 }
-
 }
-
-/* ==============================
-   SHOW PANEL
-================================*/
 
 function showAdmin(){
-document.getElementById("loginBox").style.display="none";
-document.getElementById("adminPanel").style.display="block";
+loginBox.style.display="none";
+adminPanel.style.display="block";
 }
-
-/* ==============================
-   LOGOUT
-================================*/
 
 function logout(){
 localStorage.removeItem("adminLogin");
 location.reload();
+}
+
+/* ==============================
+   DATABASE CONNECT
+================================*/
+
+const API_URL =
+"https://api.github.com/repos/amosmarbun86-droid/data-pribadi/contents/device.json";
+
+async function getDB(){
+
+const res=await fetch(API_URL);
+const data=await res.json();
+
+return{
+sha:data.sha,
+db:JSON.parse(atob(data.content))
+};
+}
+
+/* ==============================
+   LOAD DEVICE REALTIME
+================================*/
+
+async function loadDevices(){
+
+const {db}=await getDB();
+
+let active=db.devices.filter(d=>d.status=="active").length;
+let banned=db.devices.filter(d=>d.status=="banned").length;
+
+stats.innerHTML=
+`
+Active : ${active}<br>
+Banned : ${banned}<br>
+Total : ${db.devices.length}
+`;
+
+let html="";
+
+db.devices.forEach(d=>{
+
+html+=`
+<div class="device">
+ID : ${d.id}<br>
+Status : ${d.status}<br>
+<button onclick="banDevice('${d.id}')">
+🚫 BAN
+</button>
+</div>
+`;
+
+});
+
+deviceList.innerHTML=html;
+}
+
+/* ==============================
+   BAN DEVICE (REAL UPDATE)
+================================*/
+
+async function banDevice(id){
+
+const token = prompt("Masukkan ADMIN TOKEN:");
+
+if(!token) return;
+
+const current=await getDB();
+const db=current.db;
+
+let dev=db.devices.find(x=>x.id===id);
+dev.status="banned";
+
+await fetch(API_URL,{
+method:"PUT",
+headers:{
+"Authorization":"Bearer "+token,
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+message:"BAN DEVICE",
+content:btoa(JSON.stringify(db,null,2)),
+sha:current.sha
+})
+});
+
+alert("Device berhasil di BAN ✅");
+
+loadDevices();
 }
 
 </script>
