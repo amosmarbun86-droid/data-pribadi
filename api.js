@@ -1,41 +1,94 @@
+/* =========================
+   DEVICE SYSTEM API
+========================= */
+
 const API_URL =
 "https://api.github.com/repos/amosmarbun86-droid/data-pribadi/contents/device.json";
 
-const BRANCH = "main";
+/* =========================
+   DEVICE ID (ANTI CLONE)
+========================= */
 
-// ambil database
-async function getDatabase(){
+function getDeviceID(){
 
-  const res = await fetch(API_URL);
-  const data = await res.json();
+let id=localStorage.getItem("deviceID");
 
-  const content =
-    JSON.parse(atob(data.content));
-
-  return {
-    sha:data.sha,
-    db:content
-  };
+if(!id){
+id="DEV-"+crypto.randomUUID();
+localStorage.setItem("deviceID",id);
 }
 
-// kirim update (dipanggil admin panel)
-async function updateDatabase(newData){
-
-  const token = window.GH_PROXY_TOKEN; // dari github action proxy
-
-  const current = await getDatabase();
-
-  await fetch(API_URL,{
-    method:"PUT",
-    headers:{
-      "Authorization":"Bearer "+token,
-      "Content-Type":"application/json"
-    },
-    body:JSON.stringify({
-      message:"update device database",
-      content:btoa(JSON.stringify(newData,null,2)),
-      sha:current.sha,
-      branch:BRANCH
-    })
-  });
+return id;
 }
+
+/* =========================
+   GET DATABASE
+========================= */
+
+async function getDB(){
+
+const res=await fetch(API_URL);
+const data=await res.json();
+
+return JSON.parse(atob(data.content));
+}
+
+/* =========================
+   REGISTER DEVICE (1x INSTALL)
+========================= */
+
+async function registerDevice(){
+
+const db=await getDB();
+
+const deviceID=getDeviceID();
+
+let exist=db.devices.find(d=>d.id===deviceID);
+
+if(!exist){
+
+db.devices.push({
+id:deviceID,
+status:"active",
+created:new Date().toISOString()
+});
+
+alert("Device registered ✅");
+}
+
+}
+
+/* =========================
+   CHECK BAN REALTIME
+========================= */
+
+async function checkAccess(){
+
+const db=await getDB();
+
+const deviceID=getDeviceID();
+
+let device=db.devices.find(d=>d.id===deviceID);
+
+if(!device){
+document.body.innerHTML="<h2>Device not registered</h2>";
+return;
+}
+
+if(device.status==="banned"){
+document.body.innerHTML=
+`
+<div style="text-align:center;margin-top:50px">
+<h1>🚫 DEVICE BANNED</h1>
+<p>Hubungi Admin</p>
+</div>
+`;
+}
+}
+
+/* =========================
+   AUTO RUN
+========================= */
+
+registerDevice();
+setInterval(checkAccess,5000);
