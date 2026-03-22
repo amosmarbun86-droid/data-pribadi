@@ -13,7 +13,7 @@ color:white;
 margin:0;
 }
 
-/* LOGIN PAGE */
+/* LOGIN */
 #loginBox{
 height:100vh;
 display:flex;
@@ -27,7 +27,6 @@ padding:30px;
 border-radius:12px;
 width:300px;
 text-align:center;
-box-shadow:0 0 20px rgba(0,0,0,.4);
 }
 
 input{
@@ -40,6 +39,7 @@ border-radius:8px;
 
 button{
 padding:10px;
+margin:5px 0;
 width:100%;
 border:none;
 border-radius:8px;
@@ -53,7 +53,15 @@ button:hover{
 background:#16a34a;
 }
 
-/* ADMIN DASHBOARD */
+.danger{
+background:#ef4444;
+}
+
+.danger:hover{
+background:#dc2626;
+}
+
+/* PANEL */
 #adminPanel{
 display:none;
 padding:20px;
@@ -65,8 +73,9 @@ padding:15px;
 margin-bottom:15px;
 border-radius:10px;
 }
+
 .device{
-background:#020617;
+background:#334155;
 padding:10px;
 margin:8px 0;
 border-radius:8px;
@@ -79,14 +88,16 @@ border-radius:8px;
 <!-- LOGIN -->
 <div id="loginBox">
 <div class="login-card">
+
 <h2>🔐 Admin Login</h2>
 
-<input type="text" id="user" placeholder="Username">
-<input type="password" id="pass" placeholder="Password">
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Password">
 
 <button onclick="login()">LOGIN</button>
 
 <p id="error" style="color:red"></p>
+
 </div>
 </div>
 
@@ -96,35 +107,44 @@ border-radius:8px;
 <h2>⚙️ Device Admin Panel</h2>
 
 <div class="card">
-<h3>📊 Statistik Device</h3>
-<p id="stats">Loading...</p>
+<h3>Device Access Control</h3>
+
+<button onclick="addDevice()">➕ Tambah Device</button>
+<button onclick="renderDevices()">📱 Refresh Device</button>
+
+<div id="deviceList"></div>
+
 </div>
 
 <div class="card">
-<h3>📱 Device List (Realtime)</h3>
-<div id="deviceList"></div>
+<h3>Security Status</h3>
+<p id="status">System Secure ✅</p>
 </div>
 
-<button onclick="logout()">Logout</button>
+<button class="danger" onclick="logout()">Logout</button>
 
 </div>
-
-<script src="api.js"></script>
 
 <script>
 
-/* ==============================
-   ADMIN LOGIN
-================================*/
+/* ======================
+   ADMIN ACCOUNT
+====================== */
 
 const ADMIN_USER="admin";
 const ADMIN_PASS="Amosrcp86";
 
+/* ======================
+   AUTO LOGIN
+====================== */
+
 if(localStorage.getItem("adminLogin")=="true"){
 showAdmin();
-loadDevices();
-setInterval(loadDevices,5000);
 }
+
+/* ======================
+   LOGIN
+====================== */
 
 function login(){
 
@@ -134,110 +154,115 @@ let p=pass.value;
 if(u===ADMIN_USER && p===ADMIN_PASS){
 localStorage.setItem("adminLogin","true");
 showAdmin();
-loadDevices();
-setInterval(loadDevices,5000);
 }else{
 error.innerText="Login Salah!";
 }
+
 }
+
+/* ======================
+   SHOW PANEL
+====================== */
 
 function showAdmin(){
 loginBox.style.display="none";
 adminPanel.style.display="block";
+renderDevices();
 }
+
+/* ======================
+   LOGOUT
+====================== */
 
 function logout(){
 localStorage.removeItem("adminLogin");
 location.reload();
 }
 
-/* ==============================
-   DATABASE CONNECT
-================================*/
+/* ======================
+   DEVICE SYSTEM
+====================== */
 
-const API_URL =
-"https://api.github.com/repos/amosmarbun86-droid/data-pribadi/contents/device.json";
-
-async function getDB(){
-
-const res=await fetch(API_URL);
-const data=await res.json();
-
-return{
-sha:data.sha,
-db:JSON.parse(atob(data.content))
-};
+function getDevices(){
+return JSON.parse(localStorage.getItem("devices")||"[]");
 }
 
-/* ==============================
-   LOAD DEVICE REALTIME
-================================*/
+function saveDevices(data){
+localStorage.setItem("devices",JSON.stringify(data));
+}
 
-async function loadDevices(){
+/* TAMBAH DEVICE */
 
-const {db}=await getDB();
+function addDevice(){
 
-let active=db.devices.filter(d=>d.status=="active").length;
-let banned=db.devices.filter(d=>d.status=="banned").length;
+let devices=getDevices();
 
-stats.innerHTML=
-`
-Active : ${active}<br>
-Banned : ${banned}<br>
-Total : ${db.devices.length}
-`;
+let id="DEV-"+Date.now();
+
+devices.push({
+id:id,
+status:"active"
+});
+
+saveDevices(devices);
+
+renderDevices();
+
+alert("Device berhasil ditambahkan");
+}
+
+/* BAN DEVICE */
+
+function banDevice(id){
+
+let devices=getDevices();
+
+devices=devices.map(d=>{
+if(d.id===id){ d.status="banned"; }
+return d;
+});
+
+saveDevices(devices);
+renderDevices();
+}
+
+/* HAPUS DEVICE */
+
+function deleteDevice(id){
+
+let devices=getDevices().filter(d=>d.id!==id);
+
+saveDevices(devices);
+renderDevices();
+}
+
+/* TAMPILKAN DEVICE */
+
+function renderDevices(){
+
+let devices=getDevices();
 
 let html="";
 
-db.devices.forEach(d=>{
+if(devices.length==0){
+html="<p>Tidak ada device</p>";
+}
+
+devices.forEach(d=>{
 
 html+=`
 <div class="device">
-ID : ${d.id}<br>
-Status : ${d.status}<br>
-<button onclick="banDevice('${d.id}')">
-🚫 BAN
-</button>
+<b>${d.id}</b><br>
+Status: ${d.status}
+
+<button onclick="banDevice('${d.id}')" class="danger">Ban</button>
+<button onclick="deleteDevice('${d.id}')">Hapus</button>
 </div>
 `;
 
 });
 
 deviceList.innerHTML=html;
-}
-
-/* ==============================
-   BAN DEVICE (REAL UPDATE)
-================================*/
-
-async function banDevice(id){
-
-const token = prompt("Masukkan ADMIN TOKEN:");
-
-if(!token) return;
-
-const current=await getDB();
-const db=current.db;
-
-let dev=db.devices.find(x=>x.id===id);
-dev.status="banned";
-
-await fetch(API_URL,{
-method:"PUT",
-headers:{
-"Authorization":"Bearer "+token,
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-message:"BAN DEVICE",
-content:btoa(JSON.stringify(db,null,2)),
-sha:current.sha
-})
-});
-
-alert("Device berhasil di BAN ✅");
-
-loadDevices();
 }
 
 </script>
