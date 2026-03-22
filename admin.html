@@ -2,90 +2,160 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Admin Device Panel</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Panel Secure</title>
 
 <style>
 body{
 font-family:Arial;
-background:#f0f0f0;
-padding:20px;
+background:#0f172a;
+color:white;
+margin:0;
 }
 
-.box{
-background:white;
-padding:20px;
+/* LOGIN PAGE */
+#loginBox{
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+.login-card{
+background:#1e293b;
+padding:30px;
 border-radius:12px;
-max-width:400px;
-margin:auto;
-box-shadow:0 0 10px rgba(0,0,0,0.2);
+width:300px;
+text-align:center;
+box-shadow:0 0 20px rgba(0,0,0,.4);
 }
 
-input,button{
+input{
 width:100%;
-padding:12px;
-margin-top:10px;
+padding:10px;
+margin:10px 0;
+border:none;
 border-radius:8px;
-border:1px solid #ccc;
-font-size:16px;
 }
 
 button{
-background:#2563eb;
-color:white;
+padding:10px;
+width:100%;
 border:none;
+border-radius:8px;
+background:#22c55e;
+color:white;
+font-weight:bold;
+cursor:pointer;
+}
+
+button:hover{
+background:#16a34a;
+}
+
+/* ADMIN DASHBOARD */
+#adminPanel{
+display:none;
+padding:20px;
+}
+
+.card{
+background:#1e293b;
+padding:15px;
+margin-bottom:15px;
+border-radius:10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="box">
+<!-- LOGIN -->
+<div id="loginBox">
+<div class="login-card">
+<h2>🔐 Admin Login</h2>
 
-<h2>👨‍💼 Admin Device Control</h2>
+<input type="text" id="user" placeholder="Username">
+<input type="password" id="pass" placeholder="Password">
 
-<input id="device" placeholder="Paste Device ID">
+<button onclick="login()">LOGIN</button>
 
-<button onclick="approve()">✅ Approve</button>
-<button onclick="ban()">⛔ Ban</button>
+<p id="error" style="color:red"></p>
+</div>
+</div>
 
-<p id="info"></p>
+<!-- ADMIN PANEL -->
+<div id="adminPanel">
+
+<h2>⚙️ Device Admin Panel</h2>
+
+<div class="card">
+<h3>Device Access Control</h3>
+<p>Kelola device login pengguna.</p>
+</div>
+
+<div class="card">
+<h3>Security Status</h3>
+<p id="status">System Secure ✅</p>
+</div>
+
+<button onclick="logout()">Logout</button>
 
 </div>
 
-<script type="module">
+<script>
 
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+/* ==============================
+   ADMIN ACCOUNT (UBAH SENDIRI)
+================================*/
 
-import {
-getFirestore,
-doc,
-setDoc
-}
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "Amosrcp86";
 
-const firebaseConfig={
-apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
-authDomain:"data-pribadi-9cfe6.firebaseapp.com",
-projectId:"data-pribadi-9cfe6"
-};
+/* ==============================
+   CHECK LOGIN SESSION
+================================*/
 
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
-
-window.approve=async()=>{
-await setDoc(doc(db,"devices",device.value),{
-status:"approved",
-time:Date.now()
-});
-info.innerText="✅ Device Approved";
+if(localStorage.getItem("adminLogin")=="true"){
+showAdmin();
 }
 
-window.ban=async()=>{
-await setDoc(doc(db,"devices",device.value),{
-status:"banned"
-});
-info.innerText="⛔ Device Banned";
+/* ==============================
+   LOGIN FUNCTION
+================================*/
+
+function login(){
+
+let u=document.getElementById("user").value;
+let p=document.getElementById("pass").value;
+
+if(u===ADMIN_USER && p===ADMIN_PASS){
+
+localStorage.setItem("adminLogin","true");
+showAdmin();
+
+}else{
+document.getElementById("error").innerText="Login Salah!";
+}
+
+}
+
+/* ==============================
+   SHOW PANEL
+================================*/
+
+function showAdmin(){
+document.getElementById("loginBox").style.display="none";
+document.getElementById("adminPanel").style.display="block";
+}
+
+/* ==============================
+   LOGOUT
+================================*/
+
+function logout(){
+localStorage.removeItem("adminLogin");
+location.reload();
 }
 
 </script>
