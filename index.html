@@ -43,7 +43,7 @@ button{
 
 button:hover{background:#1d4ed8;}
 
-.media img,.media video{
+.media img,.media video,.media audio{
   width:100%;
   border-radius:10px;
   margin-top:10px;
@@ -118,9 +118,9 @@ progress{
 
   <hr>
 
-  <h2>📸 Upload Foto & Video</h2>
+  <h2>📸 Upload Semua Jenis File</h2>
   <div class="card">
-    <input type="file" id="fileInput" accept="image/*,video/*" capture="environment">
+    <input type="file" id="fileInput">
     <div id="preview"></div>
     <progress id="progress" value="0" max="100"></progress>
     <button onclick="uploadFile()">Upload</button>
@@ -142,7 +142,6 @@ progress{
 
 </div>
 
-<!-- LOGIN SCRIPT -->
 <script>
 function cekPassword(){
   if(pass.value==="Amosrcp86#"){
@@ -160,9 +159,7 @@ if(localStorage.getItem("login")==="true"){
 }
 </script>
 
-<!-- FIREBASE -->
 <script type="module">
-
 import { initializeApp } 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
@@ -183,8 +180,6 @@ const firebaseConfig={
 
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
-
-/* DEVICE */
 
 function getDeviceID(){
   let id=localStorage.getItem("device_id");
@@ -223,8 +218,6 @@ async function checkDevice(){
 
 checkDevice();
 
-/* KONTAK */
-
 window.simpanKontakOnline=async()=>{
   await addDoc(collection(db,"kontak"),{
     nama:nama.value,
@@ -257,23 +250,35 @@ async function tampil(){
 }
 
 tampil();
-
 </script>
 
-<!-- CLOUDINARY -->
 <script>
-
 const CLOUD_NAME="dkisbfx29";
 const UPLOAD_PRESET="ml_default";
 
 let selectedFile;
 
-fileInput.onchange=e=>{
-  selectedFile=e.target.files[0];
+fileInput.onchange = e => {
+  selectedFile = e.target.files[0];
 
-  preview.innerHTML=selectedFile.type.startsWith("image")
-  ? `<img src="${URL.createObjectURL(selectedFile)}">`
-  : `<video controls src="${URL.createObjectURL(selectedFile)}"></video>`;
+  if(!selectedFile) return;
+
+  if(selectedFile.type.startsWith("image")){
+    preview.innerHTML = `<img src="${URL.createObjectURL(selectedFile)}">`;
+  }
+  else if(selectedFile.type.startsWith("video")){
+    preview.innerHTML = `<video controls src="${URL.createObjectURL(selectedFile)}"></video>`;
+  }
+  else if(selectedFile.type.startsWith("audio")){
+    preview.innerHTML = `<audio controls src="${URL.createObjectURL(selectedFile)}"></audio>`;
+  }
+  else{
+    preview.innerHTML = `
+      <div class="card">
+        📄 ${selectedFile.name}<br>
+        ${(selectedFile.size/1024/1024).toFixed(2)} MB
+      </div>`;
+  }
 };
 
 function uploadFile(){
@@ -304,24 +309,42 @@ function tambahGallery(url,type){
   const box=document.createElement("div");
   box.className="card media";
 
-  const media=document.createElement(type.startsWith("video")?"video":"img");
-  media.src=url;
-  media.controls=true;
+  let media;
+
+  if(type.startsWith("image")){
+    media=document.createElement("img");
+    media.src=url;
+  }
+  else if(type.startsWith("video")){
+    media=document.createElement("video");
+    media.src=url;
+    media.controls=true;
+  }
+  else if(type.startsWith("audio")){
+    media=document.createElement("audio");
+    media.src=url;
+    media.controls=true;
+  }
+  else{
+    media=document.createElement("div");
+    media.innerHTML="📄 File Uploaded";
+    media.style.padding="20px";
+    media.style.textAlign="center";
+    media.style.background="#f3f4f6";
+    media.style.borderRadius="10px";
+  }
 
   const dl=document.createElement("a");
   dl.href=url;
   dl.className="download";
-  dl.innerText="⬇ Download";
+  dl.innerText="⬇ Download File";
 
   box.appendChild(media);
   box.appendChild(dl);
   gallery.prepend(box);
 }
 
-/* TRANSFER */
-
 function transferFile(){
-
   const file=transferInput.files[0];
   if(!file)return alert("Pilih file!");
 
@@ -357,7 +380,6 @@ function copyLink(l){
   navigator.clipboard.writeText(l);
   alert("Link disalin");
 }
-
 </script>
 
 </body>
