@@ -32,7 +32,6 @@ input,button{
   width:100%;
   border-radius:8px;
   border:1px solid #ccc;
-  font-size:16px;
 }
 
 button{
@@ -42,6 +41,11 @@ button{
 }
 
 button:hover{background:#1d4ed8;}
+
+.media img,.media video,.media audio{
+  width:100%;
+  border-radius:10px;
+}
 
 .download{
   display:block;
@@ -69,161 +73,242 @@ progress{width:100%;}
   <p id="error"></p>
 </div>
 
+<!-- CONTENT -->
 <div id="content" style="display:none;">
 
 <h1>📂 Pusat Data Pribadi</h1>
 
-<!-- APK PANEL -->
-<h2>📦 Upload APK (Auto Update)</h2>
+<!-- KONTAK -->
+<h2>📒 Simpan Kontak</h2>
 <div class="card">
-  <input type="file" id="apkFile">
-  <input type="number" id="versi" placeholder="Versi (1,2,3...)">
-  <button onclick="uploadAPK()">Upload APK</button>
-  <p id="apkStatus"></p>
+<input id="nama" placeholder="Nama">
+<input id="hp" placeholder="HP">
+<input id="email" placeholder="Email">
+<button onclick="simpanKontakOnline()">Simpan</button>
+</div>
 
-  <h3>📥 Daftar APK</h3>
-  <div id="apkList"></div>
+<div id="hasil"></div>
+
+<hr>
+
+<!-- FILE -->
+<h2>📁 File Penting</h2>
+<div class="card">
+<iframe src="https://drive.google.com/file/d/1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa/preview"
+width="100%" height="300"></iframe>
+</div>
+
+<hr>
+
+<!-- UPLOAD FILE -->
+<h2>📸 Upload Semua File</h2>
+<div class="card">
+<input type="file" id="fileInput">
+<div id="preview"></div>
+<progress id="progress" value="0" max="100"></progress>
+<button onclick="uploadFile()">Upload</button>
+
+<h3>Gallery</h3>
+<div id="gallery"></div>
+</div>
+
+<hr>
+
+<!-- TRANSFER -->
+<h2>📤 Transfer File</h2>
+<div class="card">
+<input type="file" id="transferInput">
+<button onclick="transferFile()">Upload</button>
+<progress id="transferProgress"></progress>
+<div id="transferResult"></div>
+<canvas id="qrcode"></canvas>
+</div>
+
+<hr>
+
+<!-- APK -->
+<h2>📦 Upload APK (Update App)</h2>
+<div class="card">
+<input type="file" id="apkFile">
+<input type="number" id="versi" placeholder="Versi">
+<button onclick="uploadAPK()">Upload APK</button>
+<p id="apkStatus"></p>
+
+<h3>📥 Daftar APK</h3>
+<div id="apkList"></div>
 </div>
 
 </div>
 
 <script>
 function cekPassword(){
-  if(pass.value==="Amosrcp86#"){
-    localStorage.setItem("login","true");
-    loginBox.style.display="none";
-    content.style.display="block";
-  }else{
-    error.innerText="Password salah!";
-  }
+if(pass.value==="Amosrcp86#"){
+localStorage.setItem("login","true");
+loginBox.style.display="none";
+content.style.display="block";
+}else{
+error.innerText="Password salah!";
+}
 }
 
 if(localStorage.getItem("login")==="true"){
-  loginBox.style.display="none";
-  content.style.display="block";
+loginBox.style.display="none";
+content.style.display="block";
 }
 </script>
 
 <script type="module">
-import { initializeApp } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore,collection,addDoc,getDocs,doc,getDoc }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const app=initializeApp({
+apiKey:"AIza...",
+authDomain:"data-pribadi-9cfe6.firebaseapp.com",
+projectId:"data-pribadi-9cfe6"
+});
 
-const firebaseConfig={
-  apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
-  authDomain:"data-pribadi-9cfe6.firebaseapp.com",
-  projectId:"data-pribadi-9cfe6"
-};
-
-const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
+// DEVICE CHECK
+async function checkDevice(){
+const id=localStorage.getItem("device_id")||crypto.randomUUID();
+localStorage.setItem("device_id",id);
 
-// 🔥 UPLOAD APK FINAL
-window.uploadAPK = async () => {
-  const file = apkFile.files[0];
-  const v = versi.value;
+const snap=await getDoc(doc(db,"devices",id));
 
-  if (!file) return alert("❌ Pilih file!");
-  if (!file.name.toLowerCase().endsWith(".apk")) return alert("❌ Harus APK!");
-  if (!v || isNaN(v)) return alert("❌ Isi versi!");
+if(!snap.exists()){
+document.body.innerHTML="Device belum diizinkan";
+return;
+}
+}
+checkDevice();
 
-  try {
-    const cleanName = file.name
-      .replace(".apk", "")
-      .replace(/[^a-zA-Z0-9]/g, "_");
-
-    const newName = cleanName + ".zip";
-
-    const renamedFile = new File([file], newName, {
-      type: "application/zip"
-    });
-
-    const fd = new FormData();
-    fd.append("file", renamedFile);
-    fd.append("upload_preset", "ml_default");
-
-    apkStatus.innerText = "⏳ Uploading...";
-
-    const res = await fetch(
-      "https://api.cloudinary.com/v1_1/dkisbfx29/raw/upload",
-      { method: "POST", body: fd }
-    );
-
-    const data = await res.json();
-
-    if (data.error) {
-      alert(data.error.message);
-      apkStatus.innerText="";
-      return;
-    }
-
-    await addDoc(collection(db, "apk"), {
-      versi: Number(v),
-      url: data.secure_url,
-      nama: newName,
-      created: Date.now()
-    });
-
-    apkStatus.innerText = "✅ Upload berhasil";
-
-    apkFile.value="";
-    versi.value="";
-
-    loadAPK();
-
-  } catch (err) {
-    alert("❌ Upload gagal!");
-    apkStatus.innerText="";
-  }
+// KONTAK
+window.simpanKontakOnline=async()=>{
+await addDoc(collection(db,"kontak"),{
+nama:nama.value,hp:hp.value,email:email.value
+});
+tampil();
 };
 
-
-// 🔥 LOAD APK LIST
-async function loadAPK(){
-  apkList.innerHTML="";
-  const snap = await getDocs(collection(db,"apk"));
-
-  let arr=[];
-  snap.forEach(d=>arr.push(d.data()));
-
-  // urut versi terbaru
-  arr.sort((a,b)=>b.versi-a.versi);
-
-  arr.forEach(a=>{
-    apkList.innerHTML += `
-    <div class="card">
-      <b>Versi ${a.versi}</b><br>
-      <button onclick="downloadAPK('${a.url}','${a.nama}')">
-      ⬇ Download APK
-      </button>
-    </div>`;
-  });
+async function tampil(){
+hasil.innerHTML="";
+const snap=await getDocs(collection(db,"kontak"));
+snap.forEach(d=>{
+let k=d.data();
+hasil.innerHTML+=`<div class="card">${k.nama}<br>${k.hp}</div>`;
+});
 }
+tampil();
 
+// APK UPLOAD
+window.uploadAPK=async()=>{
+const file=apkFile.files[0];
+const v=versi.value;
+
+if(!file)return alert("Pilih file!");
+if(!file.name.endsWith(".apk"))return alert("Harus APK!");
+
+const newName=file.name.replace(".apk",".zip");
+
+const fd=new FormData();
+fd.append("file",new File([file],newName,{type:"application/zip"}));
+fd.append("upload_preset","ml_default");
+
+apkStatus.innerText="Uploading...";
+
+const res=await fetch("https://api.cloudinary.com/v1_1/dkisbfx29/raw/upload",{method:"POST",body:fd});
+const data=await res.json();
+
+await addDoc(collection(db,"apk"),{
+versi:Number(v),
+url:data.secure_url,
+nama:newName
+});
+
+apkStatus.innerText="Berhasil";
+loadAPK();
+};
+
+// LOAD APK
+async function loadAPK(){
+apkList.innerHTML="";
+const snap=await getDocs(collection(db,"apk"));
+
+let arr=[];
+snap.forEach(d=>arr.push(d.data()));
+
+arr.sort((a,b)=>b.versi-a.versi);
+
+arr.forEach(a=>{
+apkList.innerHTML+=`
+<div class="card">
+Versi ${a.versi}
+<button onclick="downloadAPK('${a.url}','${a.nama}')">Download</button>
+</div>`;
+});
+}
 loadAPK();
 
+window.downloadAPK=(url,nama)=>{
+fetch(url)
+.then(r=>r.blob())
+.then(b=>{
+const a=document.createElement("a");
+a.href=URL.createObjectURL(b);
+a.download=nama.replace(".zip",".apk");
+a.click();
+});
+};
+</script>
 
-// 🔥 DOWNLOAD AUTO RENAME KE APK
-window.downloadAPK = function(url,nama){
-  fetch(url)
-  .then(res=>res.blob())
-  .then(blob=>{
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+<script>
+// UPLOAD FILE CLOUDINARY (LAMA TETAP ADA)
+const CLOUD_NAME="dkisbfx29";
+const UPLOAD_PRESET="ml_default";
 
-    a.download = nama.replace(".zip",".apk");
-
-    a.click();
-  });
+fileInput.onchange=e=>{
+const f=e.target.files[0];
+preview.innerHTML=`📄 ${f.name}`;
 };
 
+function uploadFile(){
+const f=fileInput.files[0];
+const fd=new FormData();
+fd.append("file",f);
+fd.append("upload_preset",UPLOAD_PRESET);
+
+const xhr=new XMLHttpRequest();
+xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+
+xhr.onload=()=>{
+const d=JSON.parse(xhr.responseText);
+gallery.innerHTML+=`<a href="${d.secure_url}" class="download">Download</a>`;
+};
+
+xhr.send(fd);
+}
+
+// TRANSFER
+function transferFile(){
+const f=transferInput.files[0];
+
+const fd=new FormData();
+fd.append("file",f);
+fd.append("upload_preset",UPLOAD_PRESET);
+
+const xhr=new XMLHttpRequest();
+xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+
+xhr.onload=()=>{
+const d=JSON.parse(xhr.responseText);
+transferResult.innerHTML=d.secure_url;
+QRCode.toCanvas(qrcode,d.secure_url);
+};
+
+xhr.send(fd);
+}
 </script>
 
 </body>
