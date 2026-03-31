@@ -4,49 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Pusat Data Pribadi PRO</title>
+<title>Pusat Data Pribadi</title>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <style>
 body{
-font-family:Arial;
-background:#0f172a;
-color:white;
-margin:0;
-padding:20px;
+  font-family:Arial;
+  background:#f0f0f0;
+  padding:20px;
+  margin:0;
 }
+
 h1,h2{text-align:center;}
+
 .card{
-background:#1e293b;
-padding:15px;
-margin:10px 0;
-border-radius:12px;
+  background:white;
+  padding:15px;
+  margin:10px 0;
+  border-radius:10px;
+  box-shadow:0 0 8px rgba(0,0,0,0.15);
 }
+
 input,button{
-width:100%;
-padding:10px;
-margin-top:5px;
-border:none;
-border-radius:8px;
+  padding:12px;
+  margin:5px 0;
+  width:100%;
+  border-radius:8px;
+  border:1px solid #ccc;
+  font-size:16px;
 }
-button{background:#22c55e;color:white;}
-.red{background:#ef4444;}
-.media img,.media video{
-width:100%;
-border-radius:10px;
-margin-top:10px;
+
+button{
+  background:#2563eb;
+  color:white;
+  border:none;
 }
+
+button:hover{background:#1d4ed8;}
+
 .download{
-display:block;
-background:#16a34a;
-padding:8px;
-text-align:center;
-margin-top:5px;
-border-radius:6px;
-color:white;
-text-decoration:none;
+  display:block;
+  text-align:center;
+  background:#16a34a;
+  color:white;
+  padding:10px;
+  margin-top:8px;
+  border-radius:8px;
+  text-decoration:none;
 }
+
+progress{width:100%;}
+#error{color:red;}
 </style>
 </head>
 
@@ -54,230 +63,167 @@ text-decoration:none;
 
 <!-- LOGIN -->
 <div id="loginBox">
-<h2>🔒 Login</h2>
-<input type="password" id="pass" placeholder="Password">
-<button onclick="login()">Masuk</button>
-<p id="error"></p>
+  <h2>🔒 Akses Data Pribadi</h2>
+  <input type="password" id="pass">
+  <button onclick="cekPassword()">Masuk</button>
+  <p id="error"></p>
 </div>
 
-<!-- CONTENT -->
-<div id="app" style="display:none;">
+<div id="content" style="display:none;">
 
-<h1>🚀 Panel Data PRO</h1>
+<h1>📂 Pusat Data Pribadi</h1>
 
-<div id="updateBox"></div>
-
-<!-- KONTAK -->
+<!-- APK PANEL -->
+<h2>📦 Upload APK (Auto Update)</h2>
 <div class="card">
-<h2>📒 Simpan Kontak</h2>
-<input id="nama" placeholder="Nama">
-<input id="hp" placeholder="HP">
-<input id="email" placeholder="Email">
-<button onclick="saveContact()">Simpan</button>
-<div id="kontakList"></div>
-</div>
+  <input type="file" id="apkFile">
+  <input type="number" id="versi" placeholder="Versi (1,2,3...)">
+  <button onclick="uploadAPK()">Upload APK</button>
+  <p id="apkStatus"></p>
 
-<!-- UPLOAD FILE -->
-<div class="card">
-<h2>📂 Upload Semua File</h2>
-<input type="file" id="fileInput">
-<progress id="progress" value="0" max="100"></progress>
-<button onclick="uploadFile()">Upload</button>
-<div id="gallery"></div>
-</div>
-
-<!-- APK -->
-<div class="card">
-<h2>📱 APK Update System</h2>
-<input type="file" id="apkFile" accept=".apk">
-<input id="versi" placeholder="Versi (1,2,3)">
-<button onclick="uploadAPK()">Upload APK</button>
-<p id="apkStatus"></p>
-
-<h3>📥 Daftar APK</h3>
-<div id="apkList"></div>
-</div>
-
-<!-- TRANSFER -->
-<div class="card">
-<h2>📤 Transfer File</h2>
-<input type="file" id="transferFileInput">
-<button onclick="transferFile()">Upload</button>
-<progress id="transferProgress" value="0" max="100"></progress>
-<div id="transferResult"></div>
-<canvas id="qrcode"></canvas>
+  <h3>📥 Daftar APK</h3>
+  <div id="apkList"></div>
 </div>
 
 </div>
 
 <script>
-function login(){
-if(pass.value==="Amosrcp86#"){
-localStorage.setItem("login","1");
-loginBox.style.display="none";
-app.style.display="block";
-}else error.innerText="Salah!";
+function cekPassword(){
+  if(pass.value==="Amosrcp86#"){
+    localStorage.setItem("login","true");
+    loginBox.style.display="none";
+    content.style.display="block";
+  }else{
+    error.innerText="Password salah!";
+  }
 }
-if(localStorage.getItem("login")){
-loginBox.style.display="none";
-app.style.display="block";
+
+if(localStorage.getItem("login")==="true"){
+  loginBox.style.display="none";
+  content.style.display="block";
 }
 </script>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeApp } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
-const appFirebase=initializeApp({
-apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
-authDomain:"data-pribadi-9cfe6.firebaseapp.com",
-projectId:"data-pribadi-9cfe6"
-});
-const db=getFirestore(appFirebase);
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-/* DEVICE CHECK */
-async function checkDevice(){
-let id=localStorage.getItem("device_id")||crypto.randomUUID();
-localStorage.setItem("device_id",id);
-
-const snap=await getDoc(doc(db,"devices",id));
-if(!snap.exists()){
-document.body.innerHTML=`<h2>Device belum diizinkan<br>${id}</h2>`;
-return;
-}
-if(snap.data().status==="banned"){
-document.body.innerHTML="<h2>Device diblokir</h2>";
-}
-}
-checkDevice();
-
-/* KONTAK */
-window.saveContact=async()=>{
-await addDoc(collection(db,"kontak"),{
-nama:nama.value,
-hp:hp.value,
-email:email.value
-});
-loadContact();
-};
-async function loadContact(){
-kontakList.innerHTML="";
-const snap=await getDocs(collection(db,"kontak"));
-snap.forEach(d=>{
-let k=d.data();
-kontakList.innerHTML+=`<div class="card">${k.nama}<br>${k.hp}</div>`;
-});
-}
-loadContact();
-
-/* APK SYSTEM */
-window.uploadAPK=async()=>{
-const file=apkFile.files[0];
-const v=versi.value;
-
-if(!file || !file.name.endsWith(".apk")) return alert("File APK!");
-if(!v) return alert("Isi versi!");
-
-const fd=new FormData();
-fd.append("file",file);
-fd.append("upload_preset","ml_default");
-
-const res=await fetch("https://api.cloudinary.com/v1_1/dkisbfx29/raw/upload",{method:"POST",body:fd});
-const data=await res.json();
-
-if(data.error){ alert(data.error.message); return; }
-
-await addDoc(collection(db,"apk"),{
-versi:Number(v),
-url:data.secure_url
-});
-
-apkStatus.innerText="✅ Upload sukses";
-loadAPK();
+const firebaseConfig={
+  apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
+  authDomain:"data-pribadi-9cfe6.firebaseapp.com",
+  projectId:"data-pribadi-9cfe6"
 };
 
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+
+// 🔥 UPLOAD APK FINAL
+window.uploadAPK = async () => {
+  const file = apkFile.files[0];
+  const v = versi.value;
+
+  if (!file) return alert("❌ Pilih file!");
+  if (!file.name.toLowerCase().endsWith(".apk")) return alert("❌ Harus APK!");
+  if (!v || isNaN(v)) return alert("❌ Isi versi!");
+
+  try {
+    const cleanName = file.name
+      .replace(".apk", "")
+      .replace(/[^a-zA-Z0-9]/g, "_");
+
+    const newName = cleanName + ".zip";
+
+    const renamedFile = new File([file], newName, {
+      type: "application/zip"
+    });
+
+    const fd = new FormData();
+    fd.append("file", renamedFile);
+    fd.append("upload_preset", "ml_default");
+
+    apkStatus.innerText = "⏳ Uploading...";
+
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/dkisbfx29/raw/upload",
+      { method: "POST", body: fd }
+    );
+
+    const data = await res.json();
+
+    if (data.error) {
+      alert(data.error.message);
+      apkStatus.innerText="";
+      return;
+    }
+
+    await addDoc(collection(db, "apk"), {
+      versi: Number(v),
+      url: data.secure_url,
+      nama: newName,
+      created: Date.now()
+    });
+
+    apkStatus.innerText = "✅ Upload berhasil";
+
+    apkFile.value="";
+    versi.value="";
+
+    loadAPK();
+
+  } catch (err) {
+    alert("❌ Upload gagal!");
+    apkStatus.innerText="";
+  }
+};
+
+
+// 🔥 LOAD APK LIST
 async function loadAPK(){
-apkList.innerHTML="";
-const snap=await getDocs(collection(db,"apk"));
+  apkList.innerHTML="";
+  const snap = await getDocs(collection(db,"apk"));
 
-let max=0,link="";
-snap.forEach(d=>{
-let a=d.data();
-if(a.versi>max){max=a.versi;link=a.url;}
+  let arr=[];
+  snap.forEach(d=>arr.push(d.data()));
 
-apkList.innerHTML+=`
-<div class="card">
-Versi ${a.versi}<br>
-<a class="download" href="${a.url}" target="_blank">Download</a>
-</div>`;
-});
+  // urut versi terbaru
+  arr.sort((a,b)=>b.versi-a.versi);
 
-/* AUTO UPDATE */
-let local=localStorage.getItem("ver")||0;
-if(max>local){
-updateBox.innerHTML=`
-<div class="card">
-🔥 Update tersedia v${max}
-<button onclick="updateApp('${link}',${max})">Update</button>
-</div>`;
+  arr.forEach(a=>{
+    apkList.innerHTML += `
+    <div class="card">
+      <b>Versi ${a.versi}</b><br>
+      <button onclick="downloadAPK('${a.url}','${a.nama}')">
+      ⬇ Download APK
+      </button>
+    </div>`;
+  });
 }
-}
+
 loadAPK();
 
-window.updateApp=(url,v)=>{
-window.open(url);
-localStorage.setItem("ver",v);
+
+// 🔥 DOWNLOAD AUTO RENAME KE APK
+window.downloadAPK = function(url,nama){
+  fetch(url)
+  .then(res=>res.blob())
+  .then(blob=>{
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+
+    a.download = nama.replace(".zip",".apk");
+
+    a.click();
+  });
 };
 
-/* FILE UPLOAD */
-const CLOUD="dkisbfx29",PRESET="ml_default";
-let selected;
-
-fileInput.onchange=e=>selected=e.target.files[0];
-
-window.uploadFile=()=>{
-if(!selected)return alert("Pilih file!");
-
-const xhr=new XMLHttpRequest();
-xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD}/raw/upload`);
-
-const fd=new FormData();
-fd.append("file",selected);
-fd.append("upload_preset",PRESET);
-
-xhr.upload.onprogress=e=>progress.value=(e.loaded/e.total)*100;
-
-xhr.onload=()=>{
-const d=JSON.parse(xhr.responseText);
-gallery.innerHTML+=`<a class="download" href="${d.secure_url}" target="_blank">File</a>`;
-};
-
-xhr.send(fd);
-};
-
-/* TRANSFER */
-window.transferFile=()=>{
-const file=transferFileInput.files[0];
-if(!file)return alert("Pilih file!");
-
-const xhr=new XMLHttpRequest();
-xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD}/raw/upload`);
-
-const fd=new FormData();
-fd.append("file",file);
-fd.append("upload_preset",PRESET);
-
-xhr.upload.onprogress=e=>transferProgress.value=(e.loaded/e.total)*100;
-
-xhr.onload=()=>{
-const d=JSON.parse(xhr.responseText);
-transferResult.innerHTML=`<a href="${d.secure_url}" target="_blank">${d.secure_url}</a>`;
-QRCode.toCanvas(qrcode,d.secure_url);
-};
-
-xhr.send(fd);
-};
 </script>
 
 </body>
