@@ -15,9 +15,7 @@ body{
   padding:20px;
   margin:0;
 }
-
 h1,h2{text-align:center;}
-
 .card{
   background:white;
   padding:15px;
@@ -25,7 +23,6 @@ h1,h2{text-align:center;}
   border-radius:10px;
   box-shadow:0 0 8px rgba(0,0,0,0.15);
 }
-
 input,button{
   padding:12px;
   margin:5px 0;
@@ -34,21 +31,17 @@ input,button{
   border:1px solid #ccc;
   font-size:16px;
 }
-
 button{
   background:#2563eb;
   color:white;
   border:none;
 }
-
 button:hover{background:#1d4ed8;}
-
 .media img,.media video,.media audio{
   width:100%;
   border-radius:10px;
   margin-top:10px;
 }
-
 .download{
   display:block;
   text-align:center;
@@ -59,12 +52,10 @@ button:hover{background:#1d4ed8;}
   border-radius:8px;
   text-decoration:none;
 }
-
 progress{
   width:100%;
   height:10px;
 }
-
 #loginBox{
   max-width:350px;
   margin:80px auto;
@@ -74,7 +65,6 @@ progress{
   box-shadow:0 0 10px rgba(0,0,0,0.2);
   text-align:center;
 }
-
 #error{color:red;}
 </style>
 </head>
@@ -92,164 +82,195 @@ progress{
 <!-- CONTENT -->
 <div id="content" style="display:none;">
 
-  <h1>📂 Pusat Data Pribadi</h1>
+<h1>📂 Pusat Data Pribadi</h1>
 
-  <h2>📒 Simpan Kontak</h2>
-  <div class="card">
-    <input id="nama" placeholder="Nama">
-    <input id="hp" placeholder="Nomor HP">
-    <input id="email" placeholder="Email">
-    <button onclick="simpanKontakOnline()">Simpan</button>
-  </div>
+<!-- UPDATE NOTIF -->
+<div id="updateBox"></div>
 
-  <div id="hasil"></div>
+<h2>📒 Simpan Kontak</h2>
+<div class="card">
+<input id="nama" placeholder="Nama">
+<input id="hp" placeholder="Nomor HP">
+<input id="email" placeholder="Email">
+<button onclick="simpanKontakOnline()">Simpan</button>
+</div>
 
-  <hr>
+<div id="hasil"></div>
 
-  <h2>📁 File Penting</h2>
-  <div class="card">
-    <iframe src="https://drive.google.com/file/d/1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa/preview"
-      width="100%" height="300"></iframe>
+<hr>
 
-    <a href="https://drive.google.com/uc?export=download&id=1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa">
-      <button>Download File</button>
-    </a>
-  </div>
+<h2>📁 File Penting</h2>
+<div class="card">
+<iframe src="https://drive.google.com/file/d/1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa/preview"
+width="100%" height="300"></iframe>
 
-  <hr>
+<a href="https://drive.google.com/uc?export=download&id=1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa">
+<button>Download File</button>
+</a>
+</div>
 
-  <h2>📸 Upload Semua Jenis File</h2>
-  <div class="card">
-    <input type="file" id="fileInput">
-    <div id="preview"></div>
-    <progress id="progress" value="0" max="100"></progress>
-    <button onclick="uploadFile()">Upload</button>
+<hr>
 
-    <h3>Gallery</h3>
-    <div id="gallery"></div>
-  </div>
+<h2>📸 Upload Semua Jenis File</h2>
+<div class="card">
+<input type="file" id="fileInput">
+<div id="preview"></div>
+<progress id="progress" value="0" max="100"></progress>
+<button onclick="uploadFile()">Upload</button>
 
-  <hr>
+<h3>Gallery</h3>
+<div id="gallery"></div>
+</div>
 
-  <h2>📤 File Transfer PRO</h2>
-  <div class="card">
-    <input type="file" id="transferInput">
-    <button onclick="transferFile()">Upload & Generate Link</button>
-    <progress id="transferProgress" value="0" max="100"></progress>
-    <div id="transferResult"></div>
-    <canvas id="qrcode"></canvas>
-  </div>
+<hr>
+
+<!-- APK SYSTEM -->
+<h2>🚀 Upload APK + Versi</h2>
+<div class="card">
+<input type="file" id="apkInput" accept=".apk">
+<input id="versiApk" placeholder="Versi (contoh: 1,2,3)">
+<button onclick="uploadAPKVersi()">Upload APK</button>
+<p id="statusApk"></p>
+</div>
+
+<hr>
+
+<h2>📤 File Transfer PRO</h2>
+<div class="card">
+<input type="file" id="transferInput">
+<button onclick="transferFile()">Upload & Generate Link</button>
+<progress id="transferProgress" value="0" max="100"></progress>
+<div id="transferResult"></div>
+<canvas id="qrcode"></canvas>
+</div>
 
 </div>
 
 <script>
 function cekPassword(){
-  if(pass.value==="Amosrcp86#"){
-    localStorage.setItem("login","true");
-    loginBox.style.display="none";
-    content.style.display="block";
-  }else{
-    error.innerText="Password salah!";
-  }
+if(pass.value==="Amosrcp86#"){
+localStorage.setItem("login","true");
+loginBox.style.display="none";
+content.style.display="block";
+}else{
+error.innerText="Password salah!";
 }
-
+}
 if(localStorage.getItem("login")==="true"){
-  loginBox.style.display="none";
-  content.style.display="block";
+loginBox.style.display="none";
+content.style.display="block";
 }
 </script>
 
 <script type="module">
-import { initializeApp } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  getDoc
+getFirestore, collection, addDoc, getDocs, doc, getDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig={
-  apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
-  authDomain:"data-pribadi-9cfe6.firebaseapp.com",
-  projectId:"data-pribadi-9cfe6"
+apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
+authDomain:"data-pribadi-9cfe6.firebaseapp.com",
+projectId:"data-pribadi-9cfe6"
 };
 
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
-function getDeviceID(){
-  let id=localStorage.getItem("device_id");
-  if(!id){
-    id=crypto.randomUUID();
-    localStorage.setItem("device_id",id);
-  }
-  return id;
-}
-
+/* DEVICE CHECK */
 async function checkDevice(){
-  const id=getDeviceID();
-  const ref=doc(db,"devices",id);
-  const snap=await getDoc(ref);
+let id=localStorage.getItem("device_id")||crypto.randomUUID();
+localStorage.setItem("device_id",id);
 
-  if(!snap.exists()){
-    document.body.innerHTML=`
-    <div style="text-align:center;padding:40px">
-      <h2>🔒 Device Belum Diizinkan</h2>
-      <textarea style="width:100%;height:80px">${id}</textarea>
-      <p>Kirim ID ini ke Admin</p>
-    </div>`;
-    return;
-  }
+const ref=doc(db,"devices",id);
+const snap=await getDoc(ref);
 
-  if(snap.data().status==="banned"){
-    document.body.innerHTML="<h2 style='text-align:center'>⛔ Device Diblokir</h2>";
-    return;
-  }
-
-  if(snap.data().status!=="approved"){
-    document.body.innerHTML="<h2 style='text-align:center'>⌛ Menunggu Approval Admin...</h2>";
-    return;
-  }
+if(!snap.exists()){
+document.body.innerHTML=`<h2>🔒 Device belum diizinkan<br>${id}</h2>`;
+return;
 }
-
+if(snap.data().status==="banned"){
+document.body.innerHTML="<h2>⛔ Device diblokir</h2>";
+return;
+}
+}
 checkDevice();
 
+/* KONTAK */
 window.simpanKontakOnline=async()=>{
-  await addDoc(collection(db,"kontak"),{
-    nama:nama.value,
-    hp:hp.value,
-    email:email.value
-  });
-
-  alert("✅ Kontak tersimpan");
-
-  nama.value="";
-  hp.value="";
-  email.value="";
-
-  tampil();
-}
+await addDoc(collection(db,"kontak"),{
+nama:nama.value,
+hp:hp.value,
+email:email.value
+});
+alert("✅ Tersimpan");
+tampil();
+};
 
 async function tampil(){
-  hasil.innerHTML="";
-  const snap=await getDocs(collection(db,"kontak"));
-
-  snap.forEach(d=>{
-    let k=d.data();
-    hasil.innerHTML+=`
-    <div class="card">
-      <b>${k.nama}</b><br>
-      ${k.hp}<br>
-      ${k.email}
-    </div>`;
-  });
+hasil.innerHTML="";
+const snap=await getDocs(collection(db,"kontak"));
+snap.forEach(d=>{
+let k=d.data();
+hasil.innerHTML+=`<div class="card">${k.nama}<br>${k.hp}<br>${k.email}</div>`;
+});
 }
-
 tampil();
+
+/* CEK UPDATE APK */
+async function cekUpdateAPK(){
+const snap=await getDocs(collection(db,"apk"));
+
+let terbaru=0,link="";
+
+snap.forEach(d=>{
+let a=d.data();
+if(a.versi>terbaru){
+terbaru=a.versi;
+link=a.url;
+}
+});
+
+let lokal=localStorage.getItem("versi_apk")||0;
+
+if(terbaru>lokal){
+updateBox.innerHTML=`
+<div class="card">
+<h3>🚨 Update Tersedia</h3>
+Versi: ${terbaru}
+<button onclick="window.open('${link}')">Download</button>
+</div>`;
+}
+}
+cekUpdateAPK();
+
+window.uploadAPKVersi=async()=>{
+const file=document.getElementById("apkInput").files[0];
+const versi=document.getElementById("versiApk").value;
+
+if(!file) return alert("Pilih APK!");
+if(!file.name.endsWith(".apk")) return alert("Harus APK!");
+if(!versi) return alert("Isi versi!");
+
+const fd=new FormData();
+fd.append("file",file);
+fd.append("upload_preset","ml_default");
+
+const res=await fetch(`https://api.cloudinary.com/v1_1/dkisbfx29/raw/upload`,{
+method:"POST",
+body:fd
+});
+
+const data=await res.json();
+
+await addDoc(collection(db,"apk"),{
+versi:Number(versi),
+url:data.secure_url,
+waktu:Date.now()
+});
+
+statusApk.innerText="✅ APK berhasil upload";
+};
 </script>
 
 <script>
@@ -258,127 +279,73 @@ const UPLOAD_PRESET="ml_default";
 
 let selectedFile;
 
-fileInput.onchange = e => {
-  selectedFile = e.target.files[0];
+fileInput.onchange=e=>{
+selectedFile=e.target.files[0];
 
-  if(!selectedFile) return;
+if(!selectedFile)return;
 
-  if(selectedFile.type.startsWith("image")){
-    preview.innerHTML = `<img src="${URL.createObjectURL(selectedFile)}">`;
-  }
-  else if(selectedFile.type.startsWith("video")){
-    preview.innerHTML = `<video controls src="${URL.createObjectURL(selectedFile)}"></video>`;
-  }
-  else if(selectedFile.type.startsWith("audio")){
-    preview.innerHTML = `<audio controls src="${URL.createObjectURL(selectedFile)}"></audio>`;
-  }
-  else{
-    preview.innerHTML = `
-      <div class="card">
-        📄 ${selectedFile.name}<br>
-        ${(selectedFile.size/1024/1024).toFixed(2)} MB
-      </div>`;
-  }
+if(selectedFile.type.startsWith("image")){
+preview.innerHTML=`<img src="${URL.createObjectURL(selectedFile)}">`;
+}
+else{
+preview.innerHTML=`📄 ${selectedFile.name}`;
+}
 };
 
 function uploadFile(){
-  if(!selectedFile)return alert("Pilih file!");
+if(!selectedFile)return alert("Pilih file!");
 
-  const xhr=new XMLHttpRequest();
-  xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+const xhr=new XMLHttpRequest();
+xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`);
 
-  const fd=new FormData();
-  fd.append("file",selectedFile);
-  fd.append("upload_preset",UPLOAD_PRESET);
+const fd=new FormData();
+fd.append("file",selectedFile);
+fd.append("upload_preset",UPLOAD_PRESET);
 
-  xhr.upload.onprogress=e=>{
-    progress.value=(e.loaded/e.total)*100;
-  };
+xhr.upload.onprogress=e=>{
+progress.value=(e.loaded/e.total)*100;
+};
 
-  xhr.onload=()=>{
-    const data=JSON.parse(xhr.responseText);
-    tambahGallery(data.secure_url,selectedFile.type);
-    progress.value=0;
-    preview.innerHTML="";
-  };
+xhr.onload=()=>{
+const data=JSON.parse(xhr.responseText);
+tambahGallery(data.secure_url,selectedFile.type);
+progress.value=0;
+};
 
-  xhr.send(fd);
+xhr.send(fd);
 }
 
 function tambahGallery(url,type){
-  const box=document.createElement("div");
-  box.className="card media";
-
-  let media;
-
-  if(type.startsWith("image")){
-    media=document.createElement("img");
-    media.src=url;
-  }
-  else if(type.startsWith("video")){
-    media=document.createElement("video");
-    media.src=url;
-    media.controls=true;
-  }
-  else if(type.startsWith("audio")){
-    media=document.createElement("audio");
-    media.src=url;
-    media.controls=true;
-  }
-  else{
-    media=document.createElement("div");
-    media.innerHTML="📄 File Uploaded";
-    media.style.padding="20px";
-    media.style.textAlign="center";
-    media.style.background="#f3f4f6";
-    media.style.borderRadius="10px";
-  }
-
-  const dl=document.createElement("a");
-  dl.href=url;
-  dl.className="download";
-  dl.innerText="⬇ Download File";
-
-  box.appendChild(media);
-  box.appendChild(dl);
-  gallery.prepend(box);
+const box=document.createElement("div");
+box.className="card";
+box.innerHTML=`<a href="${url}" target="_blank">Download File</a>`;
+gallery.prepend(box);
 }
 
 function transferFile(){
-  const file=transferInput.files[0];
-  if(!file)return alert("Pilih file!");
+const file=transferInput.files[0];
+if(!file)return alert("Pilih file!");
 
-  const xhr=new XMLHttpRequest();
-  xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+const xhr=new XMLHttpRequest();
+xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`);
 
-  const fd=new FormData();
-  fd.append("file",file);
-  fd.append("upload_preset",UPLOAD_PRESET);
+const fd=new FormData();
+fd.append("file",file);
+fd.append("upload_preset",UPLOAD_PRESET);
 
-  xhr.upload.onprogress=e=>{
-    transferProgress.value=(e.loaded/e.total)*100;
-  };
+xhr.upload.onprogress=e=>{
+transferProgress.value=(e.loaded/e.total)*100;
+};
 
-  xhr.onload=()=>{
-    const res=JSON.parse(xhr.responseText);
-    const link=res.secure_url;
+xhr.onload=()=>{
+const res=JSON.parse(xhr.responseText);
+const link=res.secure_url;
 
-    transferResult.innerHTML=
-    `✅ Link:<br>
-    <a target="_blank" href="${link}">${link}</a>
-    <button onclick="copyLink('${link}')">Copy</button>`;
+transferResult.innerHTML=`<a href="${link}" target="_blank">${link}</a>`;
+QRCode.toCanvas(qrcode,link);
+};
 
-    QRCode.toCanvas(qrcode,link);
-
-    transferProgress.value=0;
-  };
-
-  xhr.send(fd);
-}
-
-function copyLink(l){
-  navigator.clipboard.writeText(l);
-  alert("Link disalin");
+xhr.send(fd);
 }
 </script>
 
