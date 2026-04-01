@@ -9,43 +9,13 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <style>
-body{
-  font-family:Arial;
-  background:#f0f0f0;
-  padding:20px;
-  margin:0;
-}
+body{font-family:Arial;background:#f0f0f0;padding:20px;margin:0;}
 h1,h2{text-align:center;}
-.card{
-  background:white;
-  padding:15px;
-  margin:10px 0;
-  border-radius:10px;
-  box-shadow:0 0 8px rgba(0,0,0,0.15);
-}
-input,button{
-  padding:12px;
-  margin:5px 0;
-  width:100%;
-  border-radius:8px;
-  border:1px solid #ccc;
-}
-button{
-  background:#2563eb;
-  color:white;
-  border:none;
-}
-.download{
-  display:block;
-  text-align:center;
-  background:#16a34a;
-  color:white;
-  padding:10px;
-  margin-top:8px;
-  border-radius:8px;
-  text-decoration:none;
-}
-#error{color:red;}
+.card{background:white;padding:15px;margin:10px 0;border-radius:10px;box-shadow:0 0 8px rgba(0,0,0,0.15);}
+input,button{padding:12px;margin:5px 0;width:100%;border-radius:8px;border:1px solid #ccc;}
+button{background:#2563eb;color:white;border:none;}
+.download{display:block;text-align:center;background:#16a34a;color:white;padding:10px;margin-top:8px;border-radius:8px;text-decoration:none;}
+#error{color:red;text-align:center;}
 </style>
 </head>
 
@@ -53,13 +23,13 @@ button{
 
 <!-- LOGIN -->
 <div id="loginBox">
-  <h2>🔒 Login</h2>
+<h2>🔒 Login Device</h2>
+<p id="info" style="text-align:center;color:green;"></p>
 
-  <p id="tokenView" style="text-align:center;color:green;"></p>
+<input type="password" id="pin" placeholder="Masukkan PIN">
+<button onclick="loginPIN()">Masuk</button>
 
-  <input type="password" id="pass" placeholder="Masukkan password">
-  <button onclick="cekPassword()">Masuk</button>
-  <p id="error"></p>
+<p id="error"></p>
 </div>
 
 <!-- CONTENT -->
@@ -129,201 +99,178 @@ width="100%" height="300"></iframe>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  getDoc,
-  setDoc
+getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const app = initializeApp({
-  apiKey:"AIza...",
-  authDomain:"data-pribadi-9cfe6.firebaseapp.com",
-  projectId:"data-pribadi-9cfe6"
+apiKey:"AIza...",
+authDomain:"data-pribadi-9cfe6.firebaseapp.com",
+projectId:"data-pribadi-9cfe6"
 });
 
 const db = getFirestore(app);
 
+let device_id="";
+
 /* =========================
-   INIT DEVICE + TOKEN (SEBELUM LOGIN)
+   INIT DEVICE
 ========================= */
-let device_id = "";
-let login_token = "";
+async function init(){
+let id = localStorage.getItem("device_id");
 
-async function initDevice(){
-  let id = localStorage.getItem("device_id");
-
-  if(!id){
-    id = crypto.randomUUID();
-    localStorage.setItem("device_id", id);
-  }
-
-  device_id = id;
-
-  // generate token
-  login_token = Math.random().toString(36).substring(2,10).toUpperCase();
-
-  const ref = doc(db,"devices",id);
-  const snap = await getDoc(ref);
-
-  if(!snap.exists()){
-    await setDoc(ref,{
-      status:"approved",
-      token: login_token,
-      createdAt: Date.now()
-    });
-  }else{
-    const data = snap.data();
-
-    await setDoc(ref,{
-      ...data,
-      token: login_token,
-      lastSeen: Date.now()
-    });
-
-    if(data.status === "banned"){
-      document.body.innerHTML="⛔ Device diblokir";
-      return;
-    }
-  }
-
-  // tampilkan di halaman login
-  document.getElementById("tokenView").innerText =
-    "Kode Login: " + login_token;
+if(!id){
+  id = crypto.randomUUID();
+  localStorage.setItem("device_id", id);
 }
 
-/* =========================
-   LOGIN
-========================= */
-window.cekPassword = async function(){
-  error.innerText = "Loading...";
+device_id=id;
 
-  try{
-    const snap = await getDoc(doc(db,"config","admin"));
+const ref = doc(db,"devices",id);
+const snap = await getDoc(ref);
 
-    if(!snap.exists()){
-      error.innerText="Config tidak ada";
-      return;
-    }
+if(!snap.exists()){
+  await setDoc(ref,{
+    status:"pending",
+    createdAt:Date.now(),
+    ua:navigator.userAgent
+  });
 
-    const realPass = snap.data().password;
+  info.innerText="⚠️ Device baru, tunggu admin kasih PIN";
+  return;
+}
 
-    if(pass.value === realPass){
-      localStorage.setItem("login","true");
-      loginBox.style.display="none";
-      content.style.display="block";
-      tampil();
-    }else{
-      error.innerText="Password salah!";
-    }
+const data = snap.data();
 
-  }catch(e){
-    error.innerText="Error koneksi";
-  }
-};
+/* 🚫 BLOKIR */
+if(data.ua && data.ua !== navigator.userAgent){
+  await setDoc(ref,{status:"banned"},{merge:true});
+  document.body.innerHTML="⛔ Device diblokir";
+  return;
+}
+
+if(data.status==="banned"){
+  document.body.innerHTML="⛔ Device diblokir";
+  return;
+}
 
 /* AUTO LOGIN */
 if(localStorage.getItem("login")==="true"){
   loginBox.style.display="none";
   content.style.display="block";
   tampil();
+}else{
+  info.innerText="Masukkan PIN";
 }
+}
+
+/* =========================
+   LOGIN PIN
+========================= */
+window.loginPIN = async function(){
+const snap = await getDoc(doc(db,"devices",device_id));
+if(!snap.exists()) return;
+
+const data = snap.data();
+
+if(data.pin === pin.value){
+  localStorage.setItem("login","true");
+
+  loginBox.style.display="none";
+  content.style.display="block";
+
+  tampil();
+}else{
+  error.innerText="PIN salah!";
+}
+};
 
 /* =========================
    KONTAK
 ========================= */
 window.simpanKontakOnline = async()=>{
-  await addDoc(collection(db,"kontak"),{
-    nama:nama.value,
-    hp:hp.value,
-    email:email.value,
-    device_id: device_id,
-    createdAt: Date.now()
-  });
-
-  tampil();
+await addDoc(collection(db,"kontak"),{
+nama:nama.value,
+hp:hp.value,
+email:email.value,
+device_id:device_id
+});
+tampil();
 };
 
 async function tampil(){
-  hasil.innerHTML="";
-  const snap = await getDocs(collection(db,"kontak"));
+hasil.innerHTML="";
+const snap = await getDocs(collection(db,"kontak"));
 
-  snap.forEach(d=>{
-    let k = d.data();
-    if(k.device_id === device_id){
-      hasil.innerHTML += `
-      <div class="card">
-        ${k.nama}<br>${k.hp}
-      </div>`;
-    }
-  });
+snap.forEach(d=>{
+let k=d.data();
+if(k.device_id===device_id){
+hasil.innerHTML+=`<div class="card">${k.nama}<br>${k.hp}</div>`;
+}
+});
 }
 
 /* =========================
    APK
 ========================= */
 window.uploadAPK = async()=>{
-  const file = apkFile.files[0];
-  const v = versi.value;
+const file = apkFile.files[0];
+const v = versi.value;
 
-  if(!file) return alert("Pilih file!");
-  if(!file.name.endsWith(".apk")) return alert("Harus APK!");
+if(!file)return alert("Pilih file!");
+if(!file.name.endsWith(".apk"))return alert("Harus APK!");
 
-  const newName = file.name.replace(".apk",".zip");
+const newName=file.name.replace(".apk",".zip");
 
-  const fd = new FormData();
-  fd.append("file", new File([file], newName));
-  fd.append("upload_preset","ml_default");
+const fd=new FormData();
+fd.append("file",new File([file],newName));
+fd.append("upload_preset","ml_default");
 
-  apkStatus.innerText="Uploading...";
+apkStatus.innerText="Uploading...";
 
-  const res = await fetch("https://api.cloudinary.com/v1_1/dkisbfx29/raw/upload",{method:"POST",body:fd});
-  const data = await res.json();
+const res=await fetch("https://api.cloudinary.com/v1_1/dkisbfx29/raw/upload",{method:"POST",body:fd});
+const data=await res.json();
 
-  await addDoc(collection(db,"apk"),{
-    versi:Number(v),
-    url:data.secure_url,
-    nama:newName
-  });
+await addDoc(collection(db,"apk"),{
+versi:Number(v),
+url:data.secure_url,
+nama:newName
+});
 
-  apkStatus.innerText="Berhasil";
-  loadAPK();
+apkStatus.innerText="Berhasil";
+loadAPK();
 };
 
 async function loadAPK(){
-  apkList.innerHTML="";
-  const snap = await getDocs(collection(db,"apk"));
+apkList.innerHTML="";
+const snap=await getDocs(collection(db,"apk"));
 
-  let arr=[];
-  snap.forEach(d=>arr.push(d.data()));
-  arr.sort((a,b)=>b.versi-a.versi);
+let arr=[];
+snap.forEach(d=>arr.push(d.data()));
+arr.sort((a,b)=>b.versi-a.versi);
 
-  arr.forEach(a=>{
-    apkList.innerHTML+=`
-    <div class="card">
-      Versi ${a.versi}
-      <button onclick="downloadAPK('${a.url}','${a.nama}')">Download</button>
-    </div>`;
-  });
+arr.forEach(a=>{
+apkList.innerHTML+=`
+<div class="card">
+Versi ${a.versi}
+<button onclick="downloadAPK('${a.url}','${a.nama}')">Download</button>
+</div>`;
+});
 }
 loadAPK();
 
-window.downloadAPK = (url,nama)=>{
-  fetch(url)
-  .then(r=>r.blob())
-  .then(b=>{
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(b);
-    a.download=nama.replace(".zip",".apk");
-    a.click();
-  });
+window.downloadAPK=(url,nama)=>{
+fetch(url)
+.then(r=>r.blob())
+.then(b=>{
+const a=document.createElement("a");
+a.href=URL.createObjectURL(b);
+a.download=nama.replace(".zip",".apk");
+a.click();
+});
 };
 
-/* JALANKAN INIT */
-initDevice();
-
+/* RUN */
+init();
 </script>
 
 <!-- CLOUDINARY -->
@@ -332,43 +279,44 @@ const CLOUD_NAME="dkisbfx29";
 const UPLOAD_PRESET="ml_default";
 
 fileInput.onchange=e=>{
-  const f=e.target.files[0];
-  preview.innerHTML=`📄 ${f.name}`;
+const f=e.target.files[0];
+preview.innerHTML=`📄 ${f.name}`;
 };
 
 function uploadFile(){
-  const f=fileInput.files[0];
-  const fd=new FormData();
-  fd.append("file",f);
-  fd.append("upload_preset",UPLOAD_PRESET);
+const f=fileInput.files[0];
+const fd=new FormData();
+fd.append("file",f);
+fd.append("upload_preset",UPLOAD_PRESET);
 
-  const xhr=new XMLHttpRequest();
-  xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+const xhr=new XMLHttpRequest();
+xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
 
-  xhr.onload=()=>{
-    const d=JSON.parse(xhr.responseText);
-    gallery.innerHTML+=`<a href="${d.secure_url}" class="download">Download</a>`;
-  };
+xhr.onload=()=>{
+const d=JSON.parse(xhr.responseText);
+gallery.innerHTML+=`<a href="${d.secure_url}" class="download">Download</a>`;
+};
 
-  xhr.send(fd);
+xhr.send(fd);
 }
 
 function transferFile(){
-  const f=transferInput.files[0];
-  const fd=new FormData();
-  fd.append("file",f);
-  fd.append("upload_preset",UPLOAD_PRESET);
+const f=transferInput.files[0];
 
-  const xhr=new XMLHttpRequest();
-  xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+const fd=new FormData();
+fd.append("file",f);
+fd.append("upload_preset",UPLOAD_PRESET);
 
-  xhr.onload=()=>{
-    const d=JSON.parse(xhr.responseText);
-    transferResult.innerHTML=d.secure_url;
-    QRCode.toCanvas(qrcode,d.secure_url);
-  };
+const xhr=new XMLHttpRequest();
+xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
 
-  xhr.send(fd);
+xhr.onload=()=>{
+const d=JSON.parse(xhr.responseText);
+transferResult.innerHTML=d.secure_url;
+QRCode.toCanvas(qrcode,d.secure_url);
+};
+
+xhr.send(fd);
 }
 </script>
 
