@@ -45,7 +45,6 @@ button{
   border-radius:8px;
   text-decoration:none;
 }
-progress{width:100%;}
 #error{color:red;}
 </style>
 </head>
@@ -55,6 +54,9 @@ progress{width:100%;}
 <!-- LOGIN -->
 <div id="loginBox">
   <h2>🔒 Login</h2>
+
+  <p id="tokenView" style="text-align:center;color:green;"></p>
+
   <input type="password" id="pass" placeholder="Masukkan password">
   <button onclick="cekPassword()">Masuk</button>
   <p id="error"></p>
@@ -64,8 +66,6 @@ progress{width:100%;}
 <div id="content" style="display:none;">
 
 <h1>📂 Pusat Data Pribadi</h1>
-
-<div id="myToken" style="text-align:center;color:green;"></div>
 
 <!-- KONTAK -->
 <h2>📒 Simpan Kontak</h2>
@@ -95,8 +95,6 @@ width="100%" height="300"></iframe>
 <input type="file" id="fileInput">
 <div id="preview"></div>
 <button onclick="uploadFile()">Upload</button>
-
-<h3>Gallery</h3>
 <div id="gallery"></div>
 </div>
 
@@ -149,37 +147,74 @@ const app = initializeApp({
 const db = getFirestore(app);
 
 /* =========================
-   TOKEN GENERATOR
+   INIT DEVICE + TOKEN (SEBELUM LOGIN)
 ========================= */
-function generateToken(){
-  return Math.random().toString(36).substring(2,10).toUpperCase();
+let device_id = "";
+let login_token = "";
+
+async function initDevice(){
+  let id = localStorage.getItem("device_id");
+
+  if(!id){
+    id = crypto.randomUUID();
+    localStorage.setItem("device_id", id);
+  }
+
+  device_id = id;
+
+  // generate token
+  login_token = Math.random().toString(36).substring(2,10).toUpperCase();
+
+  const ref = doc(db,"devices",id);
+  const snap = await getDoc(ref);
+
+  if(!snap.exists()){
+    await setDoc(ref,{
+      status:"approved",
+      token: login_token,
+      createdAt: Date.now()
+    });
+  }else{
+    const data = snap.data();
+
+    await setDoc(ref,{
+      ...data,
+      token: login_token,
+      lastSeen: Date.now()
+    });
+
+    if(data.status === "banned"){
+      document.body.innerHTML="⛔ Device diblokir";
+      return;
+    }
+  }
+
+  // tampilkan di halaman login
+  document.getElementById("tokenView").innerText =
+    "Kode Login: " + login_token;
 }
 
 /* =========================
-   LOGIN (AMBIL DARI FIREBASE)
+   LOGIN
 ========================= */
 window.cekPassword = async function(){
   error.innerText = "Loading...";
-
-  const inputPass = pass.value;
 
   try{
     const snap = await getDoc(doc(db,"config","admin"));
 
     if(!snap.exists()){
-      error.innerText = "Config tidak ditemukan";
+      error.innerText="Config tidak ada";
       return;
     }
 
     const realPass = snap.data().password;
 
-    if(inputPass === realPass){
+    if(pass.value === realPass){
       localStorage.setItem("login","true");
       loginBox.style.display="none";
       content.style.display="block";
-
-      await checkDevice(); // jalankan setelah login
-
+      tampil();
     }else{
       error.innerText="Password salah!";
     }
@@ -189,60 +224,17 @@ window.cekPassword = async function(){
   }
 };
 
-/* =========================
-   AUTO LOGIN
-========================= */
+/* AUTO LOGIN */
 if(localStorage.getItem("login")==="true"){
   loginBox.style.display="none";
   content.style.display="block";
-  checkDevice();
-}
-
-/* =========================
-   DEVICE + TOKEN
-========================= */
-async function checkDevice(){
-  let id = localStorage.getItem("device_id");
-
-  if(!id){
-    id = crypto.randomUUID();
-    localStorage.setItem("device_id", id);
-  }
-
-  const token = generateToken();
-  const ref = doc(db,"devices",id);
-  const snap = await getDoc(ref);
-
-  if(!snap.exists()){
-    await setDoc(ref,{
-      status:"approved",
-      token: token,
-      createdAt:Date.now()
-    });
-  }else{
-    const data = snap.data();
-
-    await setDoc(ref,{
-      ...data,
-      token: token,
-      lastLogin: Date.now()
-    });
-
-    if(data.status === "banned"){
-      document.body.innerHTML = "⛔ Device diblokir";
-      return;
-    }
-  }
-
-  document.getElementById("myToken").innerText = "Kode Login: " + token;
+  tampil();
 }
 
 /* =========================
    KONTAK
 ========================= */
 window.simpanKontakOnline = async()=>{
-  const device_id = localStorage.getItem("device_id");
-
   await addDoc(collection(db,"kontak"),{
     nama:nama.value,
     hp:hp.value,
@@ -256,13 +248,10 @@ window.simpanKontakOnline = async()=>{
 
 async function tampil(){
   hasil.innerHTML="";
-  const device_id = localStorage.getItem("device_id");
-
   const snap = await getDocs(collection(db,"kontak"));
 
   snap.forEach(d=>{
     let k = d.data();
-
     if(k.device_id === device_id){
       hasil.innerHTML += `
       <div class="card">
@@ -271,7 +260,6 @@ async function tampil(){
     }
   });
 }
-tampil();
 
 /* =========================
    APK
@@ -332,6 +320,10 @@ window.downloadAPK = (url,nama)=>{
     a.click();
   });
 };
+
+/* JALANKAN INIT */
+initDevice();
+
 </script>
 
 <!-- CLOUDINARY -->
