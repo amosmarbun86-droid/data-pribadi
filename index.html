@@ -54,8 +54,8 @@ progress{width:100%;}
 
 <!-- LOGIN -->
 <div id="loginBox">
-  <h2>🔒 Akses Data Pribadi</h2>
-  <input type="password" id="pass">
+  <h2>🔒 Login</h2>
+  <input type="password" id="pass" placeholder="Masukkan password">
   <button onclick="cekPassword()">Masuk</button>
   <p id="error"></p>
 </div>
@@ -64,6 +64,8 @@ progress{width:100%;}
 <div id="content" style="display:none;">
 
 <h1>📂 Pusat Data Pribadi</h1>
+
+<div id="myToken" style="text-align:center;color:green;"></div>
 
 <!-- KONTAK -->
 <h2>📒 Simpan Kontak</h2>
@@ -92,7 +94,6 @@ width="100%" height="300"></iframe>
 <div class="card">
 <input type="file" id="fileInput">
 <div id="preview"></div>
-<progress id="progress" value="0" max="100"></progress>
 <button onclick="uploadFile()">Upload</button>
 
 <h3>Gallery</h3>
@@ -106,7 +107,6 @@ width="100%" height="300"></iframe>
 <div class="card">
 <input type="file" id="transferInput">
 <button onclick="transferFile()">Upload</button>
-<progress id="transferProgress"></progress>
 <div id="transferResult"></div>
 <canvas id="qrcode"></canvas>
 </div>
@@ -126,24 +126,6 @@ width="100%" height="300"></iframe>
 </div>
 
 </div>
-
-<!-- LOGIN -->
-<script>
-function cekPassword(){
-  if(pass.value==="Amosrcp86#"){
-    localStorage.setItem("login","true");
-    loginBox.style.display="none";
-    content.style.display="block";
-  }else{
-    error.innerText="Password salah!";
-  }
-}
-
-if(localStorage.getItem("login")==="true"){
-  loginBox.style.display="none";
-  content.style.display="block";
-}
-</script>
 
 <!-- FIREBASE -->
 <script type="module">
@@ -167,7 +149,57 @@ const app = initializeApp({
 const db = getFirestore(app);
 
 /* =========================
-   DEVICE ID + AUTO APPROVE
+   TOKEN GENERATOR
+========================= */
+function generateToken(){
+  return Math.random().toString(36).substring(2,10).toUpperCase();
+}
+
+/* =========================
+   LOGIN (AMBIL DARI FIREBASE)
+========================= */
+window.cekPassword = async function(){
+  error.innerText = "Loading...";
+
+  const inputPass = pass.value;
+
+  try{
+    const snap = await getDoc(doc(db,"config","admin"));
+
+    if(!snap.exists()){
+      error.innerText = "Config tidak ditemukan";
+      return;
+    }
+
+    const realPass = snap.data().password;
+
+    if(inputPass === realPass){
+      localStorage.setItem("login","true");
+      loginBox.style.display="none";
+      content.style.display="block";
+
+      await checkDevice(); // jalankan setelah login
+
+    }else{
+      error.innerText="Password salah!";
+    }
+
+  }catch(e){
+    error.innerText="Error koneksi";
+  }
+};
+
+/* =========================
+   AUTO LOGIN
+========================= */
+if(localStorage.getItem("login")==="true"){
+  loginBox.style.display="none";
+  content.style.display="block";
+  checkDevice();
+}
+
+/* =========================
+   DEVICE + TOKEN
 ========================= */
 async function checkDevice(){
   let id = localStorage.getItem("device_id");
@@ -177,34 +209,36 @@ async function checkDevice(){
     localStorage.setItem("device_id", id);
   }
 
+  const token = generateToken();
   const ref = doc(db,"devices",id);
   const snap = await getDoc(ref);
 
-  // auto daftar + approve
   if(!snap.exists()){
     await setDoc(ref,{
       status:"approved",
+      token: token,
       createdAt:Date.now()
     });
-    return;
+  }else{
+    const data = snap.data();
+
+    await setDoc(ref,{
+      ...data,
+      token: token,
+      lastLogin: Date.now()
+    });
+
+    if(data.status === "banned"){
+      document.body.innerHTML = "⛔ Device diblokir";
+      return;
+    }
   }
 
-  const data = snap.data();
-
-  // blok jika banned
-  if(data.status === "banned"){
-    document.body.innerHTML = "⛔ Device kamu diblokir admin";
-  }
-
-  // tambahan keamanan
-  if(data.status !== "approved"){
-    document.body.innerHTML = "⛔ Device tidak diizinkan";
-  }
+  document.getElementById("myToken").innerText = "Kode Login: " + token;
 }
-checkDevice();
 
 /* =========================
-   KONTAK (PAKAI DEVICE ID)
+   KONTAK
 ========================= */
 window.simpanKontakOnline = async()=>{
   const device_id = localStorage.getItem("device_id");
@@ -229,7 +263,6 @@ async function tampil(){
   snap.forEach(d=>{
     let k = d.data();
 
-    // tampilkan hanya milik sendiri
     if(k.device_id === device_id){
       hasil.innerHTML += `
       <div class="card">
