@@ -35,10 +35,6 @@ button{
   color:white;
   border:none;
 }
-.media img,.media video,.media audio{
-  width:100%;
-  border-radius:10px;
-}
 .download{
   display:block;
   text-align:center;
@@ -131,7 +127,7 @@ width="100%" height="300"></iframe>
 
 </div>
 
-<!-- LOGIN SCRIPT -->
+<!-- LOGIN -->
 <script>
 function cekPassword(){
   if(pass.value==="Amosrcp86#"){
@@ -171,7 +167,7 @@ const app = initializeApp({
 const db = getFirestore(app);
 
 /* =========================
-   AUTO APPROVE DEVICE
+   DEVICE ID + AUTO APPROVE
 ========================= */
 async function checkDevice(){
   let id = localStorage.getItem("device_id");
@@ -184,6 +180,7 @@ async function checkDevice(){
   const ref = doc(db,"devices",id);
   const snap = await getDoc(ref);
 
+  // auto daftar + approve
   if(!snap.exists()){
     await setDoc(ref,{
       status:"approved",
@@ -194,33 +191,51 @@ async function checkDevice(){
 
   const data = snap.data();
 
+  // blok jika banned
   if(data.status === "banned"){
     document.body.innerHTML = "⛔ Device kamu diblokir admin";
+  }
+
+  // tambahan keamanan
+  if(data.status !== "approved"){
+    document.body.innerHTML = "⛔ Device tidak diizinkan";
   }
 }
 checkDevice();
 
 /* =========================
-   KONTAK
+   KONTAK (PAKAI DEVICE ID)
 ========================= */
 window.simpanKontakOnline = async()=>{
+  const device_id = localStorage.getItem("device_id");
+
   await addDoc(collection(db,"kontak"),{
     nama:nama.value,
     hp:hp.value,
-    email:email.value
+    email:email.value,
+    device_id: device_id,
+    createdAt: Date.now()
   });
+
   tampil();
 };
 
 async function tampil(){
   hasil.innerHTML="";
+  const device_id = localStorage.getItem("device_id");
+
   const snap = await getDocs(collection(db,"kontak"));
+
   snap.forEach(d=>{
     let k = d.data();
-    hasil.innerHTML += `
-    <div class="card">
-      ${k.nama}<br>${k.hp}
-    </div>`;
+
+    // tampilkan hanya milik sendiri
+    if(k.device_id === device_id){
+      hasil.innerHTML += `
+      <div class="card">
+        ${k.nama}<br>${k.hp}
+      </div>`;
+    }
   });
 }
 tampil();
