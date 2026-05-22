@@ -3,84 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>Admin Panel</title>
-
 <style>
-body{
-font-family:Arial;
-background:#0f172a;
-color:white;
-padding:20px;
-margin:0;
-}
+body{ font-family:Arial; background:#0f172a; color:white; padding:20px; margin:0; }
 h1{margin-bottom:10px;}
-.card{
-background:#1e293b;
-padding:15px;
-margin:10px 0;
-border-radius:12px;
-}
-button{
-width:100%;
-padding:10px;
-margin-top:5px;
-border:none;
-border-radius:8px;
-font-size:15px;
-}
-.green{background:#22c55e;color:white;}
+.card{ background:#1e293b; padding:15px; margin:10px 0; border-radius:12px; }
+input, button{ width:100%; padding:10px; margin-top:5px; border:none; border-radius:8px; font-size:15px; box-sizing: border-box; }
+input{ background: #334155; color: white; margin-bottom: 10px; }
+.green{background:#22c55e;color:white; margin-top: 10px;}
 .red{background:#ef4444;color:white;}
 .gray{background:#334155;color:white;}
-textarea{
-width:100%;
-border-radius:8px;
-padding:10px;
-margin-top:5px;
-}
 </style>
 </head>
-
 <body>
 
 <h1>⚙️ Admin Panel</h1>
 
-<!-- DEVICE CONTROL -->
 <div class="card">
 <h2>📱 Device Control</h2>
-
 <input id="deviceInput" placeholder="Masukkan Device ID">
+<input id="pinInput" placeholder="Masukkan PIN untuk User (Contoh: 1234)">
 
-<button class="green" onclick="approve()">✅ Approve</button>
+<button class="green" onclick="approve()">✅ Approve & Beri PIN</button>
 <button class="red" onclick="ban()">⛔ Ban</button>
 <button class="gray" onclick="hapusDevice()">🗑 Hapus Device</button>
-
 <hr>
-
 <h3>📋 List Device</h3>
 <div id="deviceList">Loading...</div>
 </div>
 
-<!-- USER DATA -->
 <div class="card">
 <h2>📊 Data User (Realtime)</h2>
 <div id="userList">Loading...</div>
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-import {
-getFirestore,
-collection,
-onSnapshot,
-doc,
-setDoc,
-deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-/* 🔥 CONFIG */
+/* 🔥 CONFIG SAMAKAN DENGAN INDEX */
 const firebaseConfig={
 apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
 authDomain:"data-pribadi-9cfe6.firebaseapp.com",
@@ -90,20 +51,21 @@ projectId:"data-pribadi-9cfe6"
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 
-/* =========================
-   DEVICE CONTROL
-========================= */
-
+/* APPROVE DENGAN PIN */
 window.approve=async()=>{
 const id=deviceInput.value.trim();
-if(!id)return alert("Isi Device ID");
+const pin=pinInput.value.trim();
+if(!id) return alert("Isi Device ID");
+if(!pin) return alert("Isi PIN untuk user terlebih dahulu!");
 
-await setDoc(doc(db,"devices",id),{
+await setDoc(doc(db,"devices",id), {
 status:"approved",
-role:"user"
-});
+role:"user",
+pin: pin
+}, { merge: true });
 
-alert("✅ Device Approved");
+alert("✅ Device Approved dengan PIN: " + pin);
+pinInput.value = "";
 }
 
 window.ban=async()=>{
@@ -112,7 +74,7 @@ if(!id)return alert("Isi Device ID");
 
 await setDoc(doc(db,"devices",id),{
 status:"banned"
-});
+}, { merge: true });
 
 alert("⛔ Device Banned");
 }
@@ -127,27 +89,20 @@ alert("🗑 Device dihapus");
 }
 }
 
-/* =========================
-   REALTIME DEVICE LIST
-========================= */
-
+/* REALTIME DEVICE LIST */
 function loadDevices(){
 const box=document.getElementById("deviceList");
-
 onSnapshot(collection(db,"devices"),(snap)=>{
 box.innerHTML="";
-
 snap.forEach(d=>{
 let data=d.data();
-
 box.innerHTML+=`
 <div class="card">
-📱 ${d.id}<br>
-Status: ${data.status}<br>
-
-<button onclick="isi('${d.id}')">Pilih</button>
-</div>
-`;
+📱 ID: <b>${d.id}</b><br>
+Status: <span style="color:${data.status === 'approved' ? '#22c55e' : '#ef4444'}">${data.status}</span><br>
+PIN: ${data.pin || '-'}<br>
+<button onclick="isi('${d.id}')" style="background:#334155; color:white; width:auto; padding:5px 10px; margin-top:5px;">Pilih</button>
+</div>`;
 });
 });
 }
@@ -156,28 +111,20 @@ window.isi=(id)=>{
 deviceInput.value=id;
 }
 
-/* =========================
-   REALTIME USER DATA
-========================= */
-
+/* REALTIME USER DATA */
 function loadUsers(){
 const box=document.getElementById("userList");
-
 onSnapshot(collection(db,"kontak"),(snap)=>{
 box.innerHTML="";
-
 snap.forEach(d=>{
 let u=d.data();
-
 box.innerHTML+=`
 <div class="card">
 <b>👤 ${u.nama}</b><br>
 📞 ${u.hp}<br>
 📧 ${u.email}<br><br>
-
 <button class="red" onclick="hapusUser('${d.id}')">Hapus</button>
-</div>
-`;
+</div>`;
 });
 });
 }
@@ -188,11 +135,8 @@ await deleteDoc(doc(db,"kontak",id));
 }
 }
 
-/* LOAD */
 loadDevices();
 loadUsers();
-
 </script>
-
 </body>
 </html>
