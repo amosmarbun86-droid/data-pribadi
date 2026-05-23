@@ -17,23 +17,23 @@ input{ background: #334155; color: white; margin-bottom: 10px; }
 </head>
 <body>
 
-<h1>⚙️ Admin Panel</h1>
+<h1>⚙️ Admin Panel HP Rental</h1>
 
 <div class="card">
 <h2>📱 Device Control</h2>
-<input id="deviceInput" placeholder="Masukkan Device ID">
-<input id="pinInput" placeholder="Masukkan PIN untuk User (Contoh: 1234)">
+<input id="deviceInput" placeholder="Device ID Terpilih" readonly style="background:#1e293b; border:1px solid #475569;">
+<input id="pinInput" placeholder="Masukkan PIN Aktif untuk Perangkat (Contoh: 1234)">
 
 <button class="green" onclick="approve()">✅ Approve & Beri PIN</button>
-<button class="red" onclick="ban()">⛔ Ban</button>
-<button class="gray" onclick="hapusDevice()">🗑 Hapus Device</button>
+<button class="red" onclick="ban()">⛔ Ban HP</button>
+<button class="gray" onclick="hapusDevice()">🗑 Hapus Log HP</button>
 <hr>
-<h3>📋 List Device</h3>
+<h3>📋 Daftar Antrean / Status Perangkat HP</h3>
 <div id="deviceList">Loading...</div>
 </div>
 
 <div class="card">
-<h2>📊 Data User (Realtime)</h2>
+<h2>📊 Data Kontak Masuk (Realtime)</h2>
 <div id="userList">Loading...</div>
 </div>
 
@@ -41,97 +41,102 @@ input{ background: #334155; color: white; margin-bottom: 10px; }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-/* 🔥 CONFIG SAMAKAN DENGAN INDEX */
-const firebaseConfig={
+const firebaseConfig = {
 apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
 authDomain:"data-pribadi-9cfe6.firebaseapp.com",
 projectId:"data-pribadi-9cfe6"
 };
 
-const app=initializeApp(firebaseConfig);
-const db=getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-/* APPROVE DENGAN PIN */
-window.approve=async()=>{
-const id=deviceInput.value.trim();
-const pin=pinInput.value.trim();
-if(!id) return alert("Isi Device ID");
-if(!pin) return alert("Isi PIN untuk user terlebih dahulu!");
+/* APPROVE & SET PIN */
+window.approve = async() => {
+const id = deviceInput.value.trim();
+const pin = pinInput.value.trim();
+if(!id) return alert("Pilih HP dari list di bawah dahulu!");
+if(!pin) return alert("Tentukan PIN untuk penyewa ini!");
 
-await setDoc(doc(db,"devices",id), {
-status:"approved",
-role:"user",
+await setDoc(doc(db, "devices", id), {
+status: "approved",
 pin: pin
 }, { merge: true });
 
-alert("✅ Device Approved dengan PIN: " + pin);
+alert("✅ HP Berhasil Di-approve dengan PIN: " + pin);
 pinInput.value = "";
+deviceInput.value = "";
 }
 
-window.ban=async()=>{
-const id=deviceInput.value.trim();
-if(!id)return alert("Isi Device ID");
+/* BAN PERANGKAT */
+window.ban = async() => {
+const id = deviceInput.value.trim();
+if(!id) return alert("Pilih HP dari list di bawah dahulu!");
 
-await setDoc(doc(db,"devices",id),{
-status:"banned"
+await setDoc(doc(db, "devices", id), {
+status: "banned"
 }, { merge: true });
 
-alert("⛔ Device Banned");
+alert("⛔ HP Berhasil Dikunci Jarak Jauh (Banned)");
+deviceInput.value = "";
 }
 
-window.hapusDevice=async()=>{
-const id=deviceInput.value.trim();
-if(!id)return alert("Isi Device ID");
+/* HAPUS DATABASE DEVICE */
+window.hapusDevice = async() => {
+const id = deviceInput.value.trim();
+if(!id) return alert("Pilih HP dari list di bawah dahulu!");
 
-if(confirm("Hapus device ini?")){
-await deleteDoc(doc(db,"devices",id));
-alert("🗑 Device dihapus");
+if(confirm("Hapus total data log perangkat ini?")){
+await deleteDoc(doc(db, "devices", id));
+alert("🗑 Data log perangkat dihapus.");
+deviceInput.value = "";
 }
 }
 
-/* REALTIME DEVICE LIST */
+/* REALTIME DEVICE LIST DENGAN KODE NAMA PENYEWA */
 function loadDevices(){
-const box=document.getElementById("deviceList");
-onSnapshot(collection(db,"devices"),(snap)=>{
-box.innerHTML="";
-snap.forEach(d=>{
-let data=d.data();
-box.innerHTML+=`
-<div class="card">
-📱 ID: <b>${d.id}</b><br>
-Status: <span style="color:${data.status === 'approved' ? '#22c55e' : '#ef4444'}">${data.status}</span><br>
-PIN: ${data.pin || '-'}<br>
-<button onclick="isi('${d.id}')" style="background:#334155; color:white; width:auto; padding:5px 10px; margin-top:5px;">Pilih</button>
+const box = document.getElementById("deviceList");
+onSnapshot(collection(db, "devices"), (snap) => {
+box.innerHTML = "";
+snap.forEach(d => {
+let data = d.data();
+let statusColor = data.status === 'approved' ? '#22c55e' : (data.status === 'banned' ? '#ef4444' : '#eab308');
+box.innerHTML += `
+<div class="card" style="border-left: 5px solid ${statusColor};">
+👤 Nama Penyewa: <b>${data.nama_penyewa || 'Belum Mengisi'}</b><br>
+📱 Device ID: <small style="color:#94a3b8;">${d.id}</small><br>
+🟢 Status: <b style="color:${statusColor}">${data.status.toUpperCase()}</b><br>
+🔑 PIN Aktif: <b>${data.pin || '-'}</b><br>
+<button onclick="isi('${d.id}')" style="background:#334155; color:white; width:auto; padding:5px 15px; margin-top:8px;">Pilih HP Ini</button>
 </div>`;
 });
 });
 }
 
-window.isi=(id)=>{
-deviceInput.value=id;
+window.isi = (id) => {
+deviceInput.value = id;
 }
 
-/* REALTIME USER DATA */
+/* REALTIME USER CONTACT LIST */
 function loadUsers(){
-const box=document.getElementById("userList");
-onSnapshot(collection(db,"kontak"),(snap)=>{
-box.innerHTML="";
-snap.forEach(d=>{
-let u=d.data();
-box.innerHTML+=`
+const box = document.getElementById("userList");
+onSnapshot(collection(db, "kontak"), (snap) => {
+box.innerHTML = "";
+snap.forEach(d => {
+let u = d.data();
+box.innerHTML += `
 <div class="card">
 <b>👤 ${u.nama}</b><br>
 📞 ${u.hp}<br>
-📧 ${u.email}<br><br>
-<button class="red" onclick="hapusUser('${d.id}')">Hapus</button>
+📧 ${u.email || '-'}<br><br>
+<button class="red" onclick="hapusUser('${d.id}')" style="width:auto; padding:5px 10px;">Hapus</button>
 </div>`;
 });
 });
 }
 
-window.hapusUser=async(id)=>{
-if(confirm("Hapus data user?")){
-await deleteDoc(doc(db,"kontak",id));
+window.hapusUser = async(id) => {
+if(confirm("Hapus data kontak ini?")){
+await deleteDoc(doc(db, "kontak", id));
 }
 }
 
