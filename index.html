@@ -20,8 +20,16 @@ button{background:#2563eb;color:white;border:none;}
 <div id="loginBox">
 <h2>🔒 Login Device</h2>
 <p id="info" style="text-align:center;color:blue; font-weight:bold;"></p>
+
+<div id="registerForm" style="display:none;">
+<input type="text" id="namaPenyewaInput" placeholder="Masukkan Nama Penyewa HP">
+<button onclick="kirimNamaPenyewa()" style="background:#16a34a;">📩 Minta PIN ke Admin</button>
+</div>
+
+<div id="pinForm" style="display:none;">
 <input type="password" id="pin" placeholder="Masukkan PIN">
 <button onclick="loginPIN()">Masuk</button>
+</div>
 <p id="error"></p>
 </div>
 
@@ -88,9 +96,6 @@ const db = getFirestore(app);
 
 let device_id="";
 
-/* =========================
-   INIT DEVICE & REALTIME LISTEN
-========================= */
 async function init(){
 let id = localStorage.getItem("device_id");
 if(!id){
@@ -101,57 +106,74 @@ device_id = id;
 
 const ref = doc(db,"devices",id);
 
-// Gunakan onSnapshot agar status Banned/Approved langsung memicu perubahan di sisi user secara realtime
 onSnapshot(ref, async (snap) => {
   if(!snap.exists()){
     await setDoc(ref,{
       status:"pending",
+      nama_penyewa:"Belum Mengisi Nama",
       createdAt:Date.now(),
       ua:navigator.userAgent
     });
-    info.innerHTML=`⚠️ Device Baru Terdaftar!<br><small style="color:gray;">ID: ${device_id}</small><br>Tunggu admin menyetujui & memberikan PIN.`;
     return;
   }
 
   const data = snap.data();
 
-  /* 🚫 CEK BAN ATAU USER AGENT */
-  if((data.ua && data.ua !== navigator.userAgent) || data.status === "banned"){
+  /* 🚫 CEK BAN */
+  if(data.status === "banned"){
     localStorage.setItem("login","false");
     document.body.innerHTML="<h1 style='text-align:center; color:red; margin-top:50px;'>⛔ Device Anda DIBLOKIR oleh Admin</h1>";
     return;
   }
 
-  /* CEK JIKA STATUS PENDING */
+  /* CEK STATUS PENDING */
   if(data.status === "pending"){
     loginBox.style.display="block";
     content.style.display="none";
-    info.innerHTML=`⚠️ Status: Pending.<br><small style="color:gray;">ID: ${device_id}</small><br>Hubungi admin untuk aktivasi PIN.`;
+    pinForm.style.display="none";
+    registerForm.style.display="block";
+    
+    if(data.nama_penyewa && data.nama_penyewa !== "Belum Mengisi Nama") {
+      info.innerHTML = `⏳ Menunggu PIN dari Admin...<br><small style='color:gray;'>Nama Penyewa: ${data.nama_penyewa}</small>`;
+      registerForm.style.display = "none";
+    } else {
+      info.innerHTML = `⚠️ HP Rental Terdeteksi!<br><small style='color:gray;'>ID Perangkat: ${device_id}</small>`;
+    }
     return;
   }
 
-  /* AUTO LOGIN JIKA SUDAH APPROVED & PERNAH LOGIN */
+  /* AUTO LOGIN */
   if(data.status === "approved" && localStorage.getItem("login") === "true"){
     loginBox.style.display="none";
     content.style.display="block";
     tampil();
   } else {
-    info.innerText = "Device Approved. Masukkan PIN Anda:";
+    loginBox.style.display="block";
+    content.style.display="none";
+    registerForm.style.display="none";
+    pinForm.style.display="block";
+    info.innerHTML = `🔓 HP Disetujui untuk: <b>${data.nama_penyewa || 'User'}</b>.<br>Silakan masukkan PIN Anda:`;
   }
 });
 }
 
-/* =========================
-   LOGIN PIN
-========================= */
+/* USER MENGIRIM KODE NAMA PENYEWA */
+window.kirimNamaPenyewa = async () => {
+const namaInput = namaPenyewaInput.value.trim();
+if(!namaInput) return alert("Ketik nama penyewa terlebih dahulu!");
+
+await setDoc(doc(db, "devices", device_id), {
+  nama_penyewa: namaInput
+}, { merge: true });
+
+alert("✅ Nama berhasil dikirim ke database admin!");
+};
+
+/* LOGIN PIN */
 window.loginPIN = async function(){
 const snap = await getDoc(doc(db,"devices",device_id));
 if(!snap.exists()) return;
 const data = snap.data();
-
-if(data.status !== "approved"){
-  return alert("Device belum di-approve oleh admin!");
-}
 
 if(data.pin && data.pin === pin.value.trim()){
   localStorage.setItem("login","true");
@@ -163,9 +185,7 @@ if(data.pin && data.pin === pin.value.trim()){
 }
 };
 
-/* =========================
-   KONTAK
-========================= */
+/* KONTAK */
 window.simpanKontakOnline = async()=>{
 if(!nama.value || !hp.value) return alert("Nama dan HP wajib diisi");
 await addDoc(collection(db,"kontak"),{
@@ -189,9 +209,7 @@ hasil.innerHTML+=`<div class="card"><b>👤 ${k.nama}</b><br>📞 ${k.hp}<br>�
 });
 }
 
-/* =========================
-   APK MANAGEMENT
-========================= */
+/* APK MANAGEMENT */
 window.uploadAPK = async()=>{
 const file = apkFile.files[0];
 const v = versi.value;
@@ -254,43 +272,4 @@ init();
 const CLOUD_NAME="dkisbfx29";
 const UPLOAD_PRESET="ml_default";
 
-fileInput.onchange=e=>{
-const f=e.target.files[0];
-preview.innerHTML=`📄 ${f.name}`;
-};
-
-function uploadFile(){
-const f=fileInput.files[0];
-if(!f) return alert("Pilih file!");
-const fd=new FormData();
-fd.append("file",f);
-fd.append("upload_preset",UPLOAD_PRESET);
-
-const xhr=new XMLHttpRequest();
-xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
-xhr.onload=()=>{
-const d=JSON.parse(xhr.responseText);
-gallery.innerHTML+=`<a href="${d.secure_url}" class="download" target="_blank">Download File</a>`;
-};
-xhr.send(fd);
-}
-
-function transferFile(){
-const f=transferInput.files[0];
-if(!f) return alert("Pilih file!");
-const fd=new FormData();
-fd.append("file",f);
-fd.append("upload_preset",UPLOAD_PRESET);
-
-const xhr=new XMLHttpRequest();
-xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
-xhr.onload=()=>{
-const d=JSON.parse(xhr.responseText);
-transferResult.innerHTML=d.secure_url;
-QRCode.toCanvas(qrcode,d.secure_url);
-};
-xhr.send(fd);
-}
-</script>
-</body>
-</html>
+fileInput.onchange=e=>{\nconst f=e.target.files[0];\npreview.innerHTML=`📄 ${f.name}`;\n};\n\nfunction uploadFile(){\nconst f=fileInput.files[0];\nif(!f) return alert("Pilih file!");\nconst fd=new FormData();\nfd.append("file",f);\nfd.append("upload_preset",UPLOAD_PRESET);\n\nconst xhr=new XMLHttpRequest();\nxhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);\nxhr.onload=()=>{\nconst d=JSON.parse(xhr.responseText);\ngallery.innerHTML+=`<a href="${d.secure_url}" class="download" target="_blank">Download File</a>`;\n};\nxhr.send(fd);\n}\n\nfunction transferFile(){\nconst f=transferInput.files[0];\nif(!f) return alert("Pilih file!");\nconst fd=new FormData();\nfd.append("file",f);\nfd.append("upload_preset",UPLOAD_PRESET);\n\nconst xhr=new XMLHttpRequest();\nxhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);\nxhr.onload=()=>{\nconst d=JSON.parse(xhr.responseText);\ntransferResult.innerHTML=d.secure_url;\nQRCode.toCanvas(qrcode,d.secure_url);\n};\nxhr.send(fd);\n}\n</script>\n</body>\n</html>
