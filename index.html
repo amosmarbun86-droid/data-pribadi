@@ -1,82 +1,237 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pusat Data Pribadi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pusat Data Pribadi - Premium Edition</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <style>
-body{font-family:Arial;background:#f0f0f0;padding:20px;margin:0;}
-h1,h2{text-align:center;}
-.card{background:white;padding:15px;margin:10px 0;border-radius:10px;box-shadow:0 0 8px rgba(0,0,0,0.15);box-sizing: border-box;}
-input,button{padding:12px;margin:5px 0;width:100%;border-radius:8px;border:1px solid #ccc;box-sizing: border-box;}
-button{background:#2563eb;color:white;border:none;font-weight:bold;cursor:pointer;}
-.download{display:block;text-align:center;background:#16a34a;color:white;padding:12px;margin-top:8px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;}
-#error{color:red;text-align:center;}
+  :root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --success: #10b981;
+    --success-hover: #059669;
+    --danger: #ef4444;
+    --background: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+  }
+
+  body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--background);
+    color: var(--text-main);
+    padding: 16px;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 24px;
+    letter-spacing: -0.5px;
+  }
+
+  h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card {
+    background: var(--card-bg);
+    padding: 20px;
+    margin-bottom: 16px;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--border);
+    box-sizing: border-box;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 12px 16px;
+    margin: 6px 0 12px 0;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background-color: #f1f5f9;
+    color: var(--text-main);
+    font-size: 15px;
+    box-sizing: border-box;
+    transition: all 0.2s;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 233, 0.15);
+  }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    background-color: var(--primary);
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 233, 0.2);
+    transition: all 0.2s;
+  }
+
+  button:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+  }
+
+  button:active {
+    transform: translateY(0);
+  }
+
+  .download {
+    display: block;
+    text-align: center;
+    background-color: var(--success);
+    color: white;
+    padding: 14px;
+    margin-top: 10px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 15px;
+    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+    transition: all 0.2s;
+  }
+
+  .download:hover {
+    background-color: var(--success-hover);
+    transform: translateY(-1px);
+  }
+
+  .btn-copy {
+    background-color: #475569;
+    color: white;
+    padding: 10px;
+    font-size: 13px;
+    border-radius: 8px;
+    margin-top: 6px;
+    box-shadow: none;
+  }
+  
+  .btn-copy:hover { background-color: #334155; }
+
+  hr {
+    border: 0;
+    height: 1px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+
+  .preview-media {
+    width: 100%;
+    max-height: 220px;
+    margin-top: 12px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+  }
+
+  #qrcode canvas {
+    max-width: 100%;
+    height: auto !important;
+  }
+
+  /* Status info login box */
+  #loginBox { max-width: 450px; margin: 60px auto; }
+  #error { color: var(--danger); text-align: center; font-weight: 600; }
+
+  /* Badge styling */
+  .badge-version {
+    background: #eff6ff;
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 700;
+  }
 </style>
 </head>
 <body>
 
-<div id="loginBox">
-<h2>🔒 Login Device</h2>
-<p id="info" style="text-align:center;color:blue; font-weight:bold;"></p>
+<div id="loginBox" class="card">
+  <h2 style="justify-content: center;">🔒 Perangkat Terkunci</h2>
+  <p id="info" style="text-align:center; color: var(--primary); font-weight: 600; font-size: 14px;"></p>
 
-<div id="registerForm" style="display:none;">
-<input type="text" id="namaPenyewaInput" placeholder="Masukkan Nama Penyewa HP">
-<button onclick="kirimNamaPenyewa()" style="background:#16a34a;">📩 Minta PIN ke Admin</button>
-</div>
+  <div id="registerForm" style="display:none;">
+    <input type="text" id="namaPenyewaInput" placeholder="Nama Penyewa HP">
+    <button onclick="kirimNamaPenyewa()" style="background-color: var(--success);">📩 Ajukan Akses ke Admin</button>
+  </div>
 
-<div id="pinForm" style="display:none;">
-<input type="password" id="pin" placeholder="Masukkan PIN">
-<button onclick="loginPIN()">Masuk</button>
-</div>
-<p id="error"></p>
+  <div id="pinForm" style="display:none;">
+    <input type="password" id="pin" placeholder="PIN Validasi">
+    <button onclick="loginPIN()">Masuk Sistem</button>
+  </div>
+  <p id="error"></p>
 </div>
 
 <div id="content" style="display:none;">
-<h1>📂 Pusat Data Pribadi</h1>
+  <h1>📂 Pusat Data Pribadi</h1>
 
-<h2>📒 Simpan Kontak</h2>
-<div class="card">
-<input id="nama" placeholder="Nama">
-<input id="hp" placeholder="HP">
-<input id="email" placeholder="Email">
-<button onclick="simpanKontakOnline()">Simpan</button>
-</div>
-<div id="hasil"></div>
-<hr>
+  <h2>📒 Simpan Kontak Online</h2>
+  <div class="card">
+    <input id="nama" placeholder="Nama Lengkap">
+    <input id="hp" placeholder="Nomor Telepon/HP">
+    <input id="email" placeholder="Alamat Email (Opsional)">
+    <button onclick="simpanKontakOnline()">Simpan Kontak</button>
+  </div>
+  <div id="hasil"></div>
+  <hr>
 
-<h2>📁 File Penting</h2>
-<div class="card">
-<iframe src="https://drive.google.com/file/d/1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa/preview" width="100%" height="300"></iframe>
-</div>
-<hr>
+  <h2>📁 File Dokumen Penting</h2>
+  <div class="card" style="padding: 10px; overflow: hidden;">
+    <iframe src="https://drive.google.com/file/d/1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa/preview" width="100%" height="300" style="border: none; border-radius: 8px;"></iframe>
+  </div>
+  <hr>
 
-<h2>📸 Upload File (Gambar/Media)</h2>
-<div class="card">
-<input type="file" id="fileInput">
-<div id="preview"></div>
-<button onclick="uploadFile()">Upload</button>
-<div id="gallery"></div>
-</div>
-<hr>
+  <h2>📸 Cloud Upload Media (Gambar / Musik / Video)</h2>
+  <div class="card">
+    <input type="file" id="fileInput" accept="image/*,audio/*,video/*">
+    <div id="preview" style="margin: 8px 0; color: var(--text-muted); font-size: 13px;"></div>
+    <button onclick="uploadFile()">Mulai Unggah File</button>
+    <div id="uploadStatus" style="color: var(--primary); font-weight: 600; font-size: 14px; text-align: center; margin-top: 8px;"></div>
+    <div id="gallery"></div>
+  </div>
+  <hr>
 
-<h2>📤 Transfer File / APK (Via Link MediaFire/Drive)</h2>
-<div class="card">
-<input type="text" id="transferLinkInput" placeholder="Tempel / Paste Link MediaFire / Drive Disini">
-<button onclick="prosesMediaFireLink()">Buat Tautan & QR Code</button>
-<div id="transferResult" style="margin-top:10px;"></div>
-<div style="text-align:center; margin-top:10px;">
-  <canvas id="qrcode"></canvas>
-</div>
-</div>
-<hr>
+  <h2>📤 Sinkronisasi File Cepat (MediaFire / Drive Link)</h2>
+  <div class="card">
+    <input type="text" id="transferLinkInput" placeholder="Tempel URL tautan MediaFire atau Drive di sini">
+    <button onclick="prosesMediaFireLink()">Konversi & Buat QR Code</button>
+    <div id="transferResult" style="margin-top: 12px;"></div>
+    <div style="text-align:center; margin-top:16px;">
+      <canvas id="qrcode"></canvas>
+    </div>
+  </div>
+  <hr>
 
-<h2>📦 Daftar APK WA Sender</h2>
-<div class="card">
-<h3>📥 Daftar APK Tersedia</h3>
-<div id="apkList"></div>
-</div>
+  <h2>📦 DAFTAR APK VERSION</h2>
+  <div class="card" style="background: #f1f5f9; border-color: #cbd5e1;">
+    <div id="apkList"></div>
+  </div>
 </div>
 
 <script type="module">
@@ -91,154 +246,107 @@ projectId:"data-pribadi-9cfe6"
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-let device_id="";
+let device_id = "";
 
 async function init(){
-let id = localStorage.getItem("device_id");
-if(!id){
-  id = crypto.randomUUID();
-  localStorage.setItem("device_id", id);
-}
-device_id = id;
+  let id = localStorage.getItem("device_id");
+  if(!id){ id = crypto.randomUUID(); localStorage.setItem("device_id", id); }
+  device_id = id;
 
-const ref = doc(db,"devices",id);
-
-onSnapshot(ref, async (snap) => {
-  if(!snap.exists()){
-    await setDoc(ref,{
-      status:"pending",
-      nama_penyewa:"Belum Mengisi Nama",
-      createdAt:Date.now(),
-      ua:navigator.userAgent
-    });
-    return;
-  }
-
-  const data = snap.data();
-
-  if(data.status === "banned"){
-    localStorage.setItem("login","false");
-    document.body.innerHTML="<h1 style='text-align:center; color:red; margin-top:50px;'>⛔ Device Anda DIBLOKIR oleh Admin</h1>";
-    return;
-  }
-
-  if(data.status === "pending"){
-    loginBox.style.display="block";
-    content.style.display="none";
-    pinForm.style.display="none";
-    registerForm.style.display="block";
-    
-    if(data.nama_penyewa && data.nama_penyewa !== "Belum Mengisi Nama") {
-      info.innerHTML = `⏳ Menunggu PIN dari Admin...<br><small style='color:gray;'>Nama Penyewa: ${data.nama_penyewa}</small>`;
-      registerForm.style.display = "none";
-    } else {
-      info.innerHTML = `⚠️ HP Rental Terdeteksi!<br><small style='color:gray;'>ID Perangkat: ${device_id}</small>`;
+  onSnapshot(doc(db,"devices",id), async (snap) => {
+    if(!snap.exists()){
+      await setDoc(doc(db,"devices",id),{ status:"pending", nama_penyewa:"Belum Mengisi Nama", createdAt:Date.now(), ua:navigator.userAgent });
+      return;
     }
-    return;
-  }
-
-  if(data.status === "approved" && localStorage.getItem("login") === "true"){
-    loginBox.style.display="none";
-    content.style.display="block";
-    tampil();
-    listenAPK(); // Panggil realtime listen apk
-  } else {
-    loginBox.style.display="block";
-    content.style.display="none";
-    registerForm.style.display="none";
-    pinForm.style.display="block";
-    info.innerHTML = `🔓 HP Disetujui untuk: <b>${data.nama_penyewa || 'User'}</b>.<br>Silakan masukkan PIN Anda:`;
-  }
-});
+    const data = snap.data();
+    if(data.status === "banned"){
+      localStorage.setItem("login","false");
+      document.body.innerHTML="<div class='card' style='max-width:400px;margin:100px auto;text-align:center;border-top:4px solid var(--danger);'> <h2 style='color:var(--danger);justify-content:center;'>⛔ AKSES DITOLAK</h2><p style='color:var(--text-muted);'>Perangkat Anda telah diblokir secara permanen dari sistem.</p></div>";
+      return;
+    }
+    if(data.status === "pending"){
+      loginBox.style.display="block"; content.style.display="none"; pinForm.style.display="none"; registerForm.style.display="block";
+      if(data.nama_penyewa && data.nama_penyewa !== "Belum Mengisi Nama") {
+        info.innerHTML = `⏳ Permintaan Akses Diproses...<br><span style='color:var(--text-muted);font-weight:normal;'>Nama: ${data.nama_penyewa}</span>`; registerForm.style.display = "none";
+      } else { info.innerHTML = `⚠️ Perangkat Baru Terdeteksi!<br><span style='color:var(--text-muted);font-weight:normal;'>ID Perangkat: ${device_id}</span>`; }
+      return;
+    }
+    if(data.status === "approved" && localStorage.getItem("login") === "true"){
+      loginBox.style.display="none"; content.style.display="block"; tampil(); listenAPK();
+    } else {
+      loginBox.style.display="block"; content.style.display="none"; registerForm.style.display="none"; pinForm.style.display="block";
+      info.innerHTML = `🔓 Perangkat Terverifikasi: <b>${data.nama_penyewa}</b>.<br><span style='font-weight:normal;color:var(--text-muted);font-size:13px;'>Silakan masukkan PIN Otorisasi Anda:</span>`;
+    }
+  });
 }
 
 window.kirimNamaPenyewa = async () => {
-const namaInput = namaPenyewaInput.value.trim();
-if(!namaInput) return alert("Ketik nama penyewa terlebih dahulu!");
-await setDoc(doc(db, "devices", device_id), { nama_penyewa: namaInput }, { merge: true });
-alert("✅ Nama berhasil dikirim ke database admin!");
+  const namaInput = namaPenyewaInput.value.trim();
+  if(!namaInput) return alert("Harap masukkan nama Anda!");
+  await setDoc(doc(db, "devices", device_id), { nama_penyewa: namaInput }, { merge: true });
 };
 
 window.loginPIN = async function(){
-const snap = await getDoc(doc(doc(db,"devices",device_id)));
-if(!snap.exists()) return;
-const data = snap.data();
-
-if(data.pin && data.pin === pin.value.trim()){
-  localStorage.setItem("login","true");
-  loginBox.style.display="none";
-  content.style.display="block";
-  tampil();
-  listenAPK();
-}else{
-  error.innerText="PIN salah!";
-}
+  const snap = await getDoc(doc(db,"devices",device_id));
+  if(snap.exists() && snap.data().pin === pin.value.trim()){
+    localStorage.setItem("login","true"); loginBox.style.display="none"; content.style.display="block"; tampil(); listenAPK();
+  } else { error.innerText = "PIN Salah! Gagal Memvalidasi Perangkat."; }
 };
 
 window.simpanKontakOnline = async()=>{
-if(!nama.value || !hp.value) return alert("Nama dan HP wajib diisi");
-await addDoc(collection(db,"kontak"),{ nama:nama.value, hp:hp.value, email:email.value, device_id:device_id });
-nama.value=""; hp.value=""; email.value="";
-tampil();
+  if(!nama.value || !hp.value) return alert("Nama & No HP wajib diisi!");
+  await addDoc(collection(db,"kontak"),{ nama:nama.value, hp:hp.value, email:email.value, device_id:device_id });
+  nama.value=""; hp.value=""; email.value=""; tampil();
 };
 
 async function tampil(){
-hasil.innerHTML="";
-const snap = await getDocs(collection(db,"kontak"));
-snap.forEach(d=>{
-let k=d.data();
-if(k.device_id===device_id){
-hasil.innerHTML+=`<div class="card"><b>👤 ${k.nama}</b><br>📞 ${k.hp}<br>📧 ${k.email || '-'}</div>`;
-}
-});
-}
-
-/* 🔄 MENAMPILKAN DAFTAR APK SECARA REALTIME (SINKRON DENGAN ADMIN) */
-function listenAPK(){
-const apkList = document.getElementById("apkList");
-onSnapshot(collection(db, "apk"), (snap) => {
-  apkList.innerHTML = "";
-  let arr = [];
-  snap.forEach(d => arr.push(d.data()));
-  arr.sort((a,b) => b.versi - a.versi);
-  
-  if(arr.length === 0) {
-    apkList.innerHTML = "<p style='color:gray;text-align:center;'>Belum ada APK yang dibagikan oleh admin.</p>";
-    return;
-  }
-
-  arr.forEach(a => {
-    apkList.innerHTML += `
-    <div class="card" style="border-left: 5px solid #16a34a;">
-      <p style="margin:0 0 8px 0;">📦 <b>${a.nama || 'Aplikasi WA Sender'}</b> (Versi ${a.versi})</p>
-      <a href="${a.url}" class="download" target="_blank">Download & Instal APK</a>
-    </div>`;
+  hasil.innerHTML="";
+  const snap = await getDocs(collection(db,"kontak"));
+  snap.forEach(d=>{
+    let k=d.data();
+    if(k.device_id===device_id){
+      hasil.innerHTML+=`<div class="card" style="border-left:4px solid var(--primary);"><b>👤 ${k.nama}</b><br><span style="color:var(--text-muted);font-size:14px;">📞 ${k.hp} | 📧 ${k.email || '-'}</span></div>`;
+    }
   });
-});
+}
+
+function listenAPK(){
+  const apkList = document.getElementById("apkList");
+  onSnapshot(collection(db, "apk"), (snap) => {
+    apkList.innerHTML = "";
+    let arr = [];
+    snap.forEach(d => arr.push(d.data()));
+    arr.sort((a,b) => b.versi - a.versi);
+    if(arr.length === 0) {
+      apkList.innerHTML = "<p style='color:var(--text-muted);text-align:center;margin:0;font-size:14px;'>Tidak ada berkas APK rilis yang aktif.</p>";
+      return;
+    }
+    arr.forEach(a => {
+      apkList.innerHTML += `
+      <div class="card" style="margin: 8px 0; border-left: 5px solid var(--success); display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <span style="font-weight:700; color:#0f172a;">${a.nama || 'Aplikasi Paket'}</span>
+          <span class="badge-version">v${a.versi}</span>
+        </div>
+        <a href="${a.url}" class="download" target="_blank">Download & Instal APK</a>
+      </div>`;
+    });
+  });
 }
 
 init();
 
-/* PROSES CONVERT LINK MEDIAFIRE ATAU DRIVE */
 window.prosesMediaFireLink = () => {
   let link = document.getElementById("transferLinkInput").value.trim();
-  if(!link) return alert("Silakan masukkan link MediaFire / Drive!");
-
+  if(!link) return alert("Tempel link target!");
   let directLink = link;
   if(link.includes("drive.google.com/file/d/")) {
     const fileId = link.split("/file/d/")[1].split("/")[0];
     directLink = `https://docs.google.com/uc?export=download&id=${fileId}`;
   }
-
-  document.getElementById("transferResult").innerHTML = `
-    <a href="${directLink}" class="download" target="_blank" style="background: #2563eb;">Download / Buka Halaman File</a>
-  `;
-
+  document.getElementById("transferResult").innerHTML = `<a href="${directLink}" class="download" target="_blank" style="background-color: var(--primary);">Download / Buka Halaman File</a>`;
   const canvas = document.getElementById('qrcode');
-  QRCode.toCanvas(canvas, directLink, { width: 200 }, function (error) {
-    if (error) console.error(error);
-  });
+  QRCode.toCanvas(canvas, directLink, { width: 180, margin: 1 }, function (error) { if (error) console.error(error); });
 };
 </script>
 
@@ -248,26 +356,60 @@ const UPLOAD_PRESET = "ml_default";
 
 fileInput.onchange = e => {
   const f = e.target.files[0];
-  if(f) preview.innerHTML = `📄 ${f.name}`;
+  if(f) {
+    let typeInfo = "Berkas Dokumen";
+    if(f.type.startsWith("image/")) typeInfo = "🖼️ Gambar/Foto";
+    else if(f.type.startsWith("audio/")) typeInfo = "🎵 Musik/Audio Mp3";
+    else if(f.type.startsWith("video/")) typeInfo = "🎥 File Rekaman Video";
+    preview.innerHTML = `Terdeteksi: <b>${typeInfo}</b><br><span style="font-size:12px;color:var(--text-muted);">${f.name} (${(f.size/(1024*1024)).toFixed(2)} MB)</span>`;
+  }
 };
 
 function uploadFile(){
   const f = fileInput.files[0];
-  if(!f) return alert("Pilih file!");
+  if(!f) return alert("Pilih media berkas!");
   const fd = new FormData();
   fd.append("file", f);
   fd.append("upload_preset", UPLOAD_PRESET);
+  document.getElementById("uploadStatus").innerText = "⏳ Memproses pengunggahan media...";
 
   const xhr = new XMLHttpRequest();
   xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
   xhr.onload = () => {
+    document.getElementById("uploadStatus").innerText = "";
     const d = JSON.parse(xhr.responseText);
     if(d.secure_url) {
-      gallery.innerHTML += `<a href="${d.secure_url}" class="download" target="_blank">Download File</a>`;
-    }
+      let embedHTML = "";
+      if(d.resource_type === "image") {
+        embedHTML = `<img src="${d.secure_url}" class="preview-media" alt="Preview">`;
+      } else if(d.resource_type === "video" && f.type.startsWith("audio/")) {
+        embedHTML = `<audio controls class="preview-media" style="height:45px; margin-top:10px;"><source src="${d.secure_url}" type="${f.type}"></audio>`;
+      } else if(d.resource_type === "video") {
+        embedHTML = `<video controls class="preview-media"><source src="${d.secure_url}" type="${f.type}"></video>`;
+      }
+
+      gallery.innerHTML = `
+        <div class="card" style="background:#f8fafc; border: 1px dashed #cbd5e1; margin-top:12px;">
+          <p style="color:var(--success); font-weight:700; margin:0 0 6px 0; font-size:14px;">✅ Upload Selesai!</p>
+          <input type="text" value="${d.secure_url}" id="urlResult" readonly style="margin-bottom:6px; background:#e2e8f0; font-size:13px;">
+          <button class="btn-copy" onclick="salinTautanHasil()">📋 Salin Tautan URL</button>
+          <a href="${d.secure_url}" target="_blank" class="download" style="background-color: #64748b; font-size: 14px; padding: 10px;">Lihat File Asli</a>
+          ${embedHTML}
+        </div>
+      ` + gallery.innerHTML;
+      fileInput.value = ""; preview.innerHTML = "";
+    } else { alert("Ukuran berkas melebihi batas akun gratis!"); }
   };
   xhr.send(fd);
 }
+
+window.salinTautanHasil = () => {
+  const copyText = document.getElementById("urlResult");
+  copyText.select();
+  copyText.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(copyText.value);
+  alert("Link sukses disalin!");
+};
 </script>
 </body>
 </html>
