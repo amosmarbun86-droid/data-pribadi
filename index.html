@@ -61,22 +61,26 @@ button{background:#2563eb;color:white;border:none;}
 </div>
 <hr>
 
-<h2>📤 Transfer File</h2>
+<h2>📤 Transfer File (Bisa APK / Semua File)</h2>
 <div class="card">
-<input type="file" id="transferInput">
-<button onclick="transferFile()">Upload</button>
-<div id="transferResult"></div>
-<canvas id="qrcode"></canvas>
+<input type="file" id="transferInput" accept=".apk,image/*,audio/*,video/*,application/*">
+<div id="transferPreview" style="margin: 5px 0; color: #555; font-weight: bold;"></div>
+<button onclick="transferFile()">Upload & Buat Link APK</button>
+<div id="transferStatus" style="color: blue; margin-top: 5px;"></div>
+<div id="transferResult" style="word-break: break-all; margin-top: 10px; font-weight: bold; color: green;"></div>
+<div style="text-align: center; margin-top: 10px;">
+  <canvas id="qrcode"></canvas>
+</div>
 </div>
 <hr>
 
 <h2>📦 Upload APK</h2>
 <div class="card">
-<input type="file" id="apkFile">
+<input type="file" id="apkFile" accept=".apk">
 <input type="number" id="versi" placeholder="Versi">
 <button onclick="uploadAPK()">Upload APK</button>
 <p id="apkStatus"></p>
-<h3>📥 Daftar APK</h3>
+<h3>📥 Daftar Link APK</h3>
 <div id="apkList"></div>
 </div>
 </div>
@@ -162,7 +166,7 @@ window.kirimNamaPenyewa = async () => {
 const namaInput = namaPenyewaInput.value.trim();
 if(!namaInput) return alert("Ketik nama penyewa terlebih dahulu!");
 
-await setDoc(doc(db, "devices", device_id), {
+await setDoc(doc(doc(db, "devices", device_id)), {
   nama_penyewa: namaInput
 }, { merge: true });
 
@@ -209,36 +213,41 @@ hasil.innerHTML+=`<div class="card"><b>👤 ${k.nama}</b><br>📞 ${k.hp}<br>�
 });
 }
 
-/* APK MANAGEMENT */
+/* APK MANAGEMENT DENGAN TRIK LINK ZIP RESISTEN ERROR */
 window.uploadAPK = async()=>{
 const file = apkFile.files[0];
 const v = versi.value;
-if(!file) return alert("Pilih file!");
-if(!file.name.endsWith(".apk")) return alert("Harus APK!");
+if(!file) return alert("Pilih file APK!");
+if(!file.name.endsWith(".apk")) return alert("File harus berformat .apk!");
 
+const namaSamaran = file.name.replace(".apk", ".zip");
 const fd = new FormData();
-fd.append("file", file);
+fd.append("file", new File([file], namaSamaran, { type: "application/zip" }));
 fd.append("upload_preset", "ml_default");
 
-apkStatus.innerText = "Uploading...";
+apkStatus.innerText = "Sedang Mengunggah APK...";
 try {
-  const res = await fetch("https://api.cloudinary.com/v1_1/dkisbfx29/raw/upload", {method:"POST", body:fd});
+  const res = await fetch("https://api.cloudinary.com/v1_1/dkisbfx29/auto/upload", {
+    method: "POST", 
+    body: fd
+  });
   const data = await res.json();
 
-  if(!data.secure_url) throw new Error("Upload gagal");
+  if(!data.secure_url) throw new Error(data.error ? data.error.message : "Ditolak server Cloudinary");
 
   await addDoc(collection(db, "apk"), {
     versi: Number(v),
     url: data.secure_url,
     nama: file.name
   });
-  apkStatus.innerText = "Berhasil";
+  
+  apkStatus.innerText = "Berhasil Unggah!";
   versi.value = "";
   apkFile.value = "";
   loadAPK();
 } catch(e) {
   console.error(e);
-  apkStatus.innerText = "Gagal upload";
+  apkStatus.innerText = "Upload Gagal: " + e.message;
 }
 };
 
@@ -251,8 +260,8 @@ arr.sort((a,b) => b.versi - a.versi);
 arr.forEach(a => {
   apkList.innerHTML += `
   <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-    <span><b>Versi ${a.versi}</b> (${a.nama || 'Aplikasi.apk'})</span>
-    <a href="${a.url}" download="${a.nama}" class="download" style="margin-top:0; padding: 5px 15px; background:#2563eb;">Download</a>
+    <span><b>WA Sender Versi ${a.versi}</b></span>
+    <a href="${a.url}" download="${a.nama}" class="download" style="margin-top:0; padding: 5px 15px; background:#2563eb;">Instal APK</a>
   </div>`;
 });
 }
@@ -286,19 +295,48 @@ function uploadFile(){
   xhr.send(fd);
 }
 
+// Menampilkan nama file yang dipilih di bagian transfer file
+transferInput.onchange = e => {
+  const f = e.target.files[0];
+  if(f) {
+    transferPreview.innerHTML = `File Terpilih: 📁 ${f.name}`;
+  }
+};
+
 function transferFile(){
   const f = transferInput.files[0];
-  if(!f) return alert("Pilih file!");
+  if(!f) return alert("Pilih file APK atau file lainnya terlebih dahulu!");
+  
   const fd = new FormData();
   fd.append("file", f);
   fd.append("upload_preset", UPLOAD_PRESET);
 
+  transferStatus.innerHTML = "Sedang memproses & mengunggah file...";
+  
   const xhr = new XMLHttpRequest();
   xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
   xhr.onload = () => {
-    const d = JSON.parse(xhr.responseText);
-    transferResult.innerHTML = d.secure_url;
-    QRCode.toCanvas(qrcode, d.secure_url);
+    if(xhr.status >= 200 && xhr.status < 300) {
+      const d = JSON.parse(xhr.responseText);
+      transferStatus.innerHTML = "✅ Berhasil dibuatkan Link!";
+      
+      // Menampilkan link download aman berupa tombol jangkar
+      transferResult.innerHTML = `
+        <p>Link Unduhan Berhasil Dibuat:</p>
+        <a href="${d.secure_url}" download="${f.name}" class="download" style="background: #16a34a;">Download / Instal ${f.name}</a>
+        <p style="font-size:12px; color:gray; margin-top:5px;">Atau scan QR Code di bawah menggunakan HP Kerja:</p>
+      `;
+      
+      // Generate QR Code otomatis dari Link Cloudinary tersebut
+      QRCode.toCanvas(document.getElementById('qrcode'), d.secure_url, function (error) {
+        if (error) console.error(error);
+      });
+    } else {
+      transferStatus.innerHTML = "❌ Gagal mengunggah file ke server.";
+    }
+  };
+  xhr.onerror = () => {
+    transferStatus.innerHTML = "❌ Terjadi kesalahan jaringan.";
   };
   xhr.send(fd);
 }
