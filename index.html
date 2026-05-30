@@ -10,8 +10,8 @@ body{font-family:Arial;background:#f0f0f0;padding:20px;margin:0;}
 h1,h2{text-align:center;}
 .card{background:white;padding:15px;margin:10px 0;border-radius:10px;box-shadow:0 0 8px rgba(0,0,0,0.15);box-sizing: border-box;}
 input,button{padding:12px;margin:5px 0;width:100%;border-radius:8px;border:1px solid #ccc;box-sizing: border-box;}
-button{background:#2563eb;color:white;border:none;}
-.download{display:block;text-align:center;background:#16a34a;color:white;padding:10px;margin-top:8px;border-radius:8px;text-decoration:none;font-weight:bold;}
+button{background:#2563eb;color:white;border:none;font-weight:bold;cursor:pointer;}
+.download{display:block;text-align:center;background:#16a34a;color:white;padding:12px;margin-top:8px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;}
 #error{color:red;text-align:center;}
 </style>
 </head>
@@ -52,7 +52,7 @@ button{background:#2563eb;color:white;border:none;}
 </div>
 <hr>
 
-<h2>📸 Upload File</h2>
+<h2>📸 Upload File (Gambar/Media)</h2>
 <div class="card">
 <input type="file" id="fileInput">
 <div id="preview"></div>
@@ -61,11 +61,10 @@ button{background:#2563eb;color:white;border:none;}
 </div>
 <hr>
 
-<h2>📤 Transfer File (Bisa Pilih APK)</h2>
+<h2>📤 Transfer File / APK (Via Link MediaFire/Drive)</h2>
 <div class="card">
-<input type="file" id="transferInput" accept=".apk,image/*,audio/*,video/*,application/*">
-<div id="transferPreview" style="margin:5px 0; color:gray; font-size:14px;"></div>
-<button onclick="transferFile()">Upload & Buat QR Code</button>
+<input type="text" id="transferLinkInput" placeholder="Tempel / Paste Link MediaFire / Drive Disini">
+<button onclick="prosesMediaFireLink()">Buat Tautan & QR Code</button>
 <div id="transferResult" style="margin-top:10px;"></div>
 <div style="text-align:center; margin-top:10px;">
   <canvas id="qrcode"></canvas>
@@ -73,13 +72,9 @@ button{background:#2563eb;color:white;border:none;}
 </div>
 <hr>
 
-<h2>📦 Upload APK</h2>
+<h2>📦 Daftar APK WA Sender</h2>
 <div class="card">
-<input type="file" id="apkFile" accept=".apk">
-<input type="number" id="versi" placeholder="Versi">
-<button onclick="uploadAPK()">Upload APK</button>
-<p id="apkStatus"></p>
-<h3>📥 Daftar APK</h3>
+<h3>📥 Daftar APK Tersedia</h3>
 <div id="apkList"></div>
 </div>
 </div>
@@ -122,14 +117,12 @@ onSnapshot(ref, async (snap) => {
 
   const data = snap.data();
 
-  /* 🚫 CEK BAN */
   if(data.status === "banned"){
     localStorage.setItem("login","false");
     document.body.innerHTML="<h1 style='text-align:center; color:red; margin-top:50px;'>⛔ Device Anda DIBLOKIR oleh Admin</h1>";
     return;
   }
 
-  /* CEK STATUS PENDING */
   if(data.status === "pending"){
     loginBox.style.display="block";
     content.style.display="none";
@@ -145,11 +138,11 @@ onSnapshot(ref, async (snap) => {
     return;
   }
 
-  /* AUTO LOGIN */
   if(data.status === "approved" && localStorage.getItem("login") === "true"){
     loginBox.style.display="none";
     content.style.display="block";
     tampil();
+    listenAPK(); // Panggil realtime listen apk
   } else {
     loginBox.style.display="block";
     content.style.display="none";
@@ -160,21 +153,15 @@ onSnapshot(ref, async (snap) => {
 });
 }
 
-/* USER MENGIRIM KODE NAMA PENYEWA */
 window.kirimNamaPenyewa = async () => {
 const namaInput = namaPenyewaInput.value.trim();
 if(!namaInput) return alert("Ketik nama penyewa terlebih dahulu!");
-
-await setDoc(doc(db, "devices", device_id), {
-  nama_penyewa: namaInput
-}, { merge: true });
-
+await setDoc(doc(db, "devices", device_id), { nama_penyewa: namaInput }, { merge: true });
 alert("✅ Nama berhasil dikirim ke database admin!");
 };
 
-/* LOGIN PIN */
 window.loginPIN = async function(){
-const snap = await getDoc(doc(db,"devices",device_id));
+const snap = await getDoc(doc(doc(db,"devices",device_id)));
 if(!snap.exists()) return;
 const data = snap.data();
 
@@ -183,20 +170,15 @@ if(data.pin && data.pin === pin.value.trim()){
   loginBox.style.display="none";
   content.style.display="block";
   tampil();
+  listenAPK();
 }else{
   error.innerText="PIN salah!";
 }
 };
 
-/* KONTAK */
 window.simpanKontakOnline = async()=>{
 if(!nama.value || !hp.value) return alert("Nama dan HP wajib diisi");
-await addDoc(collection(db,"kontak"),{
-nama:nama.value,
-hp:hp.value,
-email:email.value,
-device_id:device_id
-});
+await addDoc(collection(db,"kontak"),{ nama:nama.value, hp:hp.value, email:email.value, device_id:device_id });
 nama.value=""; hp.value=""; email.value="";
 tampil();
 };
@@ -212,59 +194,52 @@ hasil.innerHTML+=`<div class="card"><b>👤 ${k.nama}</b><br>📞 ${k.hp}<br>�
 });
 }
 
-/* APK MANAGEMENT - DIRECT LINK */
-window.uploadAPK = async()=>{
-const file = apkFile.files[0];
-const v = versi.value;
-if(!file) return alert("Pilih file!");
-if(!file.name.endsWith(".apk")) return alert("Harus APK!");
+/* 🔄 MENAMPILKAN DAFTAR APK SECARA REALTIME (SINKRON DENGAN ADMIN) */
+function listenAPK(){
+const apkList = document.getElementById("apkList");
+onSnapshot(collection(db, "apk"), (snap) => {
+  apkList.innerHTML = "";
+  let arr = [];
+  snap.forEach(d => arr.push(d.data()));
+  arr.sort((a,b) => b.versi - a.versi);
+  
+  if(arr.length === 0) {
+    apkList.innerHTML = "<p style='color:gray;text-align:center;'>Belum ada APK yang dibagikan oleh admin.</p>";
+    return;
+  }
 
-// Ganti ekstensi jadi .zip saat upload agar Cloudinary memproses sebagai file biasa (menghindari error 401)
-const newName = file.name.replace(".apk", ".zip");
-const fd = new FormData();
-fd.append("file", new File([file], newName, { type: "application/zip" }));
-fd.append("upload_preset", "ml_default");
-
-apkStatus.innerText = "Uploading...";
-try {
-  const res = await fetch("https://api.cloudinary.com/v1_1/dkisbfx29/auto/upload", {method:"POST", body:fd});
-  const data = await res.json();
-
-  if(!data.secure_url) throw new Error("Upload gagal");
-
-  // Jika file berupa zip, Cloudinary menyediakan opsi fl_attachment untuk memaksa download langsung
-  const directDownloadUrl = data.secure_url.replace("/upload/", "/upload/fl_attachment/");
-
-  await addDoc(collection(db, "apk"), {
-    versi: Number(v),
-    url: directDownloadUrl,
-    nama: file.name
+  arr.forEach(a => {
+    apkList.innerHTML += `
+    <div class="card" style="border-left: 5px solid #16a34a;">
+      <p style="margin:0 0 8px 0;">📦 <b>${a.nama || 'Aplikasi WA Sender'}</b> (Versi ${a.versi})</p>
+      <a href="${a.url}" class="download" target="_blank">Download & Instal APK</a>
+    </div>`;
   });
-  apkStatus.innerText = "Berhasil";
-  loadAPK();
-} catch(e) {
-  apkStatus.innerText = "Gagal upload";
-}
-};
-
-async function loadAPK(){
-apkList.innerHTML = "";
-const snap = await getDocs(collection(db, "apk"));
-let arr = [];
-snap.forEach(d => arr.push(d.data()));
-arr.sort((a,b) => b.versi - a.versi);
-arr.forEach(a => {
-  // Menggunakan tag <a> murni agar browser HP langsung mendownload secara native tanpa script tambahan
-  apkList.innerHTML += `
-  <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-    <span><b>WA Sender Versi ${a.versi}</b></span>
-    <a href="${a.url}" download="${a.nama}" class="download" style="width:auto; padding: 8px 15px; margin-top:0;">Download</a>
-  </div>`;
 });
 }
-loadAPK();
 
 init();
+
+/* PROSES CONVERT LINK MEDIAFIRE ATAU DRIVE */
+window.prosesMediaFireLink = () => {
+  let link = document.getElementById("transferLinkInput").value.trim();
+  if(!link) return alert("Silakan masukkan link MediaFire / Drive!");
+
+  let directLink = link;
+  if(link.includes("drive.google.com/file/d/")) {
+    const fileId = link.split("/file/d/")[1].split("/")[0];
+    directLink = `https://docs.google.com/uc?export=download&id=${fileId}`;
+  }
+
+  document.getElementById("transferResult").innerHTML = `
+    <a href="${directLink}" class="download" target="_blank" style="background: #2563eb;">Download / Buka Halaman File</a>
+  `;
+
+  const canvas = document.getElementById('qrcode');
+  QRCode.toCanvas(canvas, directLink, { width: 200 }, function (error) {
+    if (error) console.error(error);
+  });
+};
 </script>
 
 <script>
@@ -273,7 +248,7 @@ const UPLOAD_PRESET = "ml_default";
 
 fileInput.onchange = e => {
   const f = e.target.files[0];
-  preview.innerHTML = `📄 ${f.name}`;
+  if(f) preview.innerHTML = `📄 ${f.name}`;
 };
 
 function uploadFile(){
@@ -287,50 +262,8 @@ function uploadFile(){
   xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
   xhr.onload = () => {
     const d = JSON.parse(xhr.responseText);
-    gallery.innerHTML += `<a href="${d.secure_url}" class="download" target="_blank">Download File</a>`;
-  };
-  xhr.send(fd);
-}
-
-transferInput.onchange = e => {
-  const f = e.target.files[0];
-  if(f) {
-    document.getElementById("transferPreview").innerHTML = `Terpilih: 📄 ${f.name}`;
-  }
-};
-
-function transferFile(){
-  const f = transferInput.files[0];
-  if(!f) return alert("Pilih file!");
-  
-  let finalFile = f;
-  if(f.name.endsWith(".apk")){
-    const newName = f.name.replace(".apk", ".zip");
-    finalFile = new File([f], newName, { type: "application/zip" });
-  }
-
-  const fd = new FormData();
-  fd.append("file", finalFile);
-  fd.append("upload_preset", UPLOAD_PRESET);
-
-  document.getElementById("transferResult").innerHTML = "Mengunggah berkas...";
-
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
-  xhr.onload = () => {
-    if(xhr.status >= 200 && xhr.status < 300){
-      const d = JSON.parse(xhr.responseText);
-      
-      // Sisipkan flag attachment agar link memaksa browser mendownload berkasnya langsung
-      const directDownloadUrl = d.secure_url.replace("/upload/", "/upload/fl_attachment/");
-      
-      document.getElementById("transferResult").innerHTML = `
-        <a href="${directDownloadUrl}" download="${f.name}" class="download">Download / Instal ${f.name}</a>
-      `;
-      
-      QRCode.toCanvas(document.getElementById('qrcode'), directDownloadUrl);
-    } else {
-      document.getElementById("transferResult").innerHTML = "<span style='color:red;'>Gagal memproses file.</span>";
+    if(d.secure_url) {
+      gallery.innerHTML += `<a href="${d.secure_url}" class="download" target="_blank">Download File</a>`;
     }
   };
   xhr.send(fd);
