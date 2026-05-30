@@ -213,63 +213,95 @@ hasil.innerHTML+=`<div class="card"><b>👤 ${k.nama}</b><br>📞 ${k.hp}<br>�
 window.uploadAPK = async()=>{
 const file = apkFile.files[0];
 const v = versi.value;
-if(!file)return alert("Pilih file!");
-if(!file.name.endsWith(".apk"))return alert("Harus APK!");
+if(!file) return alert("Pilih file!");
+if(!file.name.endsWith(".apk")) return alert("Harus APK!");
 
-const newName=file.name.replace(".apk",".zip");
-const fd=new FormData();
-fd.append("file",new File([file],newName));
-fd.append("upload_preset","ml_default");
+const fd = new FormData();
+fd.append("file", file);
+fd.append("upload_preset", "ml_default");
 
-apkStatus.innerText="Uploading...";
+apkStatus.innerText = "Uploading...";
 try {
-  const res=await fetch("https://api.cloudinary.com/v1_1/dkisbfx29/raw/upload",{method:"POST",body:fd});
-  const data=await res.json();
+  const res = await fetch("https://api.cloudinary.com/v1_1/dkisbfx29/raw/upload", {method:"POST", body:fd});
+  const data = await res.json();
 
-  await addDoc(collection(db,"apk"),{
-  versi:Number(v),
-  url:data.secure_url,
-  nama:newName
+  if(!data.secure_url) throw new Error("Upload gagal");
+
+  await addDoc(collection(db, "apk"), {
+    versi: Number(v),
+    url: data.secure_url,
+    nama: file.name
   });
-  apkStatus.innerText="Berhasil";
+  apkStatus.innerText = "Berhasil";
+  versi.value = "";
+  apkFile.value = "";
   loadAPK();
 } catch(e) {
-  apkStatus.innerText="Gagal upload";
+  console.error(e);
+  apkStatus.innerText = "Gagal upload";
 }
 };
 
 async function loadAPK(){
-apkList.innerHTML="";
-const snap=await getDocs(collection(db,"apk"));
-let arr=[];
-snap.forEach(d=>arr.push(d.data()));
-arr.sort((a,b)=>b.versi-a.versi);
-arr.forEach(a=>{
-apkList.innerHTML+=`
-<div class="card">
-Versi ${a.versi}
-<button onclick="downloadAPK('${a.url}','${a.nama}')">Download</button>
-</div>`;
+apkList.innerHTML = "";
+const snap = await getDocs(collection(db, "apk"));
+let arr = [];
+snap.forEach(d => arr.push(d.data()));
+arr.sort((a,b) => b.versi - a.versi);
+arr.forEach(a => {
+  apkList.innerHTML += `
+  <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+    <span><b>Versi ${a.versi}</b> (${a.nama || 'Aplikasi.apk'})</span>
+    <a href="${a.url}" download="${a.nama}" class="download" style="margin-top:0; padding: 5px 15px; background:#2563eb;">Download</a>
+  </div>`;
 });
 }
 loadAPK();
-
-window.downloadAPK=(url,nama)=>{
-fetch(url)
-.then(r=>r.blob())
-.then(b=>{
-const a=document.createElement("a");
-a.href=URL.createObjectURL(b);
-a.download=nama.replace(".zip",".apk");
-a.click();
-});
-};
 
 init();
 </script>
 
 <script>
-const CLOUD_NAME="dkisbfx29";
-const UPLOAD_PRESET="ml_default";
+const CLOUD_NAME = "dkisbfx29";
+const UPLOAD_PRESET = "ml_default";
 
-fileInput.onchange=e=>{\nconst f=e.target.files[0];\npreview.innerHTML=`📄 ${f.name}`;\n};\n\nfunction uploadFile(){\nconst f=fileInput.files[0];\nif(!f) return alert("Pilih file!");\nconst fd=new FormData();\nfd.append("file",f);\nfd.append("upload_preset",UPLOAD_PRESET);\n\nconst xhr=new XMLHttpRequest();\nxhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);\nxhr.onload=()=>{\nconst d=JSON.parse(xhr.responseText);\ngallery.innerHTML+=`<a href="${d.secure_url}" class="download" target="_blank">Download File</a>`;\n};\nxhr.send(fd);\n}\n\nfunction transferFile(){\nconst f=transferInput.files[0];\nif(!f) return alert("Pilih file!");\nconst fd=new FormData();\nfd.append("file",f);\nfd.append("upload_preset",UPLOAD_PRESET);\n\nconst xhr=new XMLHttpRequest();\nxhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);\nxhr.onload=()=>{\nconst d=JSON.parse(xhr.responseText);\ntransferResult.innerHTML=d.secure_url;\nQRCode.toCanvas(qrcode,d.secure_url);\n};\nxhr.send(fd);\n}\n</script>\n</body>\n</html>
+fileInput.onchange = e => {
+  const f = e.target.files[0];
+  preview.innerHTML = `📄 ${f.name}`;
+};
+
+function uploadFile(){
+  const f = fileInput.files[0];
+  if(!f) return alert("Pilih file!");
+  const fd = new FormData();
+  fd.append("file", f);
+  fd.append("upload_preset", UPLOAD_PRESET);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+  xhr.onload = () => {
+    const d = JSON.parse(xhr.responseText);
+    gallery.innerHTML += `<a href="${d.secure_url}" class="download" target="_blank">Download File</a>`;
+  };
+  xhr.send(fd);
+}
+
+function transferFile(){
+  const f = transferInput.files[0];
+  if(!f) return alert("Pilih file!");
+  const fd = new FormData();
+  fd.append("file", f);
+  fd.append("upload_preset", UPLOAD_PRESET);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+  xhr.onload = () => {
+    const d = JSON.parse(xhr.responseText);
+    transferResult.innerHTML = d.secure_url;
+    QRCode.toCanvas(qrcode, d.secure_url);
+  };
+  xhr.send(fd);
+}
+</script>
+</body>
+</html>
