@@ -11,7 +11,7 @@ h1,h2{text-align:center;}
 .card{background:white;padding:15px;margin:10px 0;border-radius:10px;box-shadow:0 0 8px rgba(0,0,0,0.15);box-sizing: border-box;}
 input,button{padding:12px;margin:5px 0;width:100%;border-radius:8px;border:1px solid #ccc;box-sizing: border-box;}
 button{background:#2563eb;color:white;border:none;}
-.download{display:block;text-align:center;background:#16a34a;color:white;padding:10px;margin-top:8px;border-radius:8px;text-decoration:none;}
+.download{display:block;text-align:center;background:#16a34a;color:white;padding:10px;margin-top:8px;border-radius:8px;text-decoration:none;font-weight:bold;}
 #error{color:red;text-align:center;}
 </style>
 </head>
@@ -212,14 +212,14 @@ hasil.innerHTML+=`<div class="card"><b>👤 ${k.nama}</b><br>📞 ${k.hp}<br>�
 });
 }
 
-/* APK MANAGEMENT - FIX ERROR 401 DENGAN ENDPOINT /AUTO/ */
+/* APK MANAGEMENT - DIRECT LINK */
 window.uploadAPK = async()=>{
 const file = apkFile.files[0];
 const v = versi.value;
 if(!file) return alert("Pilih file!");
 if(!file.name.endsWith(".apk")) return alert("Harus APK!");
 
-// Manipulasi nama ke .zip agar Cloudinary mendeteksinya sebagai berkas biasa
+// Ganti ekstensi jadi .zip saat upload agar Cloudinary memproses sebagai file biasa (menghindari error 401)
 const newName = file.name.replace(".apk", ".zip");
 const fd = new FormData();
 fd.append("file", new File([file], newName, { type: "application/zip" }));
@@ -227,16 +227,18 @@ fd.append("upload_preset", "ml_default");
 
 apkStatus.innerText = "Uploading...";
 try {
-  // Menggunakan /auto/upload supaya file bersifat publik & bisa dibuka tanpa error 401
   const res = await fetch("https://api.cloudinary.com/v1_1/dkisbfx29/auto/upload", {method:"POST", body:fd});
   const data = await res.json();
 
-  if(!data.secure_url) throw new Error("Upload ditolak Cloudinary");
+  if(!data.secure_url) throw new Error("Upload gagal");
+
+  // Jika file berupa zip, Cloudinary menyediakan opsi fl_attachment untuk memaksa download langsung
+  const directDownloadUrl = data.secure_url.replace("/upload/", "/upload/fl_attachment/");
 
   await addDoc(collection(db, "apk"), {
     versi: Number(v),
-    url: data.secure_url,
-    nama: file.name // Tetap simpan nama .apk asli untuk referensi download
+    url: directDownloadUrl,
+    nama: file.name
   });
   apkStatus.innerText = "Berhasil";
   loadAPK();
@@ -252,26 +254,15 @@ let arr = [];
 snap.forEach(d => arr.push(d.data()));
 arr.sort((a,b) => b.versi - a.versi);
 arr.forEach(a => {
+  // Menggunakan tag <a> murni agar browser HP langsung mendownload secara native tanpa script tambahan
   apkList.innerHTML += `
   <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-    <span>Versi ${a.versi}</span>
-    <button onclick="downloadAPK('${a.url}','${a.nama}')" style="width:auto; padding: 5px 15px; background:#16a34a;">Download</button>
+    <span><b>WA Sender Versi ${a.versi}</b></span>
+    <a href="${a.url}" download="${a.nama}" class="download" style="width:auto; padding: 8px 15px; margin-top:0;">Download</a>
   </div>`;
 });
 }
 loadAPK();
-
-window.downloadAPK = (url, nama) => {
-  fetch(url)
-  .then(r => r.blob())
-  .then(b => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(b);
-    // Kembalikan nama filenya menjadi .apk murni
-    a.download = nama;
-    a.click();
-  });
-};
 
 init();
 </script>
@@ -301,7 +292,6 @@ function uploadFile(){
   xhr.send(fd);
 }
 
-// Menampilkan nama file APK/Foto/Musik yang dipilih di bagian Transfer File
 transferInput.onchange = e => {
   const f = e.target.files[0];
   if(f) {
@@ -314,7 +304,6 @@ function transferFile(){
   if(!f) return alert("Pilih file!");
   
   let finalFile = f;
-  // Jika file yang dipilih adalah APK, ubah namanya jadi .zip agar aman di Cloudinary
   if(f.name.endsWith(".apk")){
     const newName = f.name.replace(".apk", ".zip");
     finalFile = new File([f], newName, { type: "application/zip" });
@@ -327,19 +316,19 @@ function transferFile(){
   document.getElementById("transferResult").innerHTML = "Mengunggah berkas...";
 
   const xhr = new XMLHttpRequest();
-  // Menggunakan /auto/upload agar file APK/ZIP menjadi publik dan bisa diunduh
   xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
   xhr.onload = () => {
     if(xhr.status >= 200 && xhr.status < 300){
       const d = JSON.parse(xhr.responseText);
       
-      // Tampilkan tombol unduh aman yang akan dibaca di HP Kerja
+      // Sisipkan flag attachment agar link memaksa browser mendownload berkasnya langsung
+      const directDownloadUrl = d.secure_url.replace("/upload/", "/upload/fl_attachment/");
+      
       document.getElementById("transferResult").innerHTML = `
-        <button onclick="downloadAPK('${d.secure_url}','${f.name}')" class="download">Download / Instal ${f.name}</button>
+        <a href="${directDownloadUrl}" download="${f.name}" class="download">Download / Instal ${f.name}</a>
       `;
       
-      // Membuat QR Code agar bisa langsung di-scan pakai HP Kerja
-      QRCode.toCanvas(document.getElementById('qrcode'), d.secure_url);
+      QRCode.toCanvas(document.getElementById('qrcode'), directDownloadUrl);
     } else {
       document.getElementById("transferResult").innerHTML = "<span style='color:red;'>Gagal memproses file.</span>";
     }
