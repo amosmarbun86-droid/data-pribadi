@@ -35,7 +35,6 @@
   .btn-small { width: auto; padding: 6px 12px; font-size: 13px; margin: 0; }
   .flex-group { display: flex; justify-content: space-between; align-items: center; background: #334155; padding: 10px; margin: 6px 0; border-radius: 8px; }
   
-  /* Style Form Login Admin */
   #loginAdminBox { max-width: 400px; margin: 80px auto; text-align: center; }
 </style>
 </head>
@@ -59,7 +58,7 @@
 
     <button class="btn-green" onclick="approveDevice()">1. Setujui & Beri PIN</button>
     <button class="btn-orange" onclick="banDevice()">2. Blokir Perangkat (BAN)</button>
-    <button class="btn-red" onclick="hapusDevice Permanent()">3. Hapus Device dari List</button>
+    <button class="btn-red" onclick="hapusDevicePermanent()">3. Hapus Device dari List</button>
   </div>
 
   <div class="card" style="border-top: 4px solid var(--green);">
@@ -100,10 +99,8 @@ projectId:"data-pribadi-9cfe6"
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// PIN KEAMANAN UTAMA PANEL ADMIN (Silakan ganti sesuai keinginan Anda, Amos)
 const PIN_RAHASIA_ADMIN = "8686"; 
 
-// FUNGSI CEK LOGIN
 window.cekLoginAdmin = () => {
   const pinInput = document.getElementById("adminPinInput").value.trim();
   if (pinInput === PIN_RAHASIA_ADMIN) {
@@ -117,7 +114,6 @@ window.cekLoginAdmin = () => {
 function bukaPanelAdmin() {
   document.getElementById("loginAdminBox").style.display = "none";
   document.getElementById("adminContent").style.display = "block";
-  // Jalankan streaming database realtime setelah sukses login
   loadDevices();
   loadUsers();
   loadApkAdmin();
@@ -128,14 +124,12 @@ window.logoutAdmin = () => {
   window.location.reload();
 };
 
-// Cek status login saat halaman dibuka pertama kali
 if (sessionStorage.getItem("admin_authenticated") === "true") {
   bukaPanelAdmin();
 }
 
-/* ==================== 3 FUNGSI UTAMA DEVICE CONTROL ==================== */
+/* ==================== CONTROL FUNCTIONS ==================== */
 
-// 1. SETUJUI DEVICE
 window.approveDevice = async () => {
   let id = deviceInput.value;
   let pin = pinInput.value.trim();
@@ -145,7 +139,6 @@ window.approveDevice = async () => {
   clearDeviceSelection();
 };
 
-// 2. BAN/BLOKIR DEVICE
 window.banDevice = async () => {
   let id = deviceInput.value;
   if(!id) return alert("Pilih HP dari daftar di bawah yang akan diblokir!");
@@ -154,10 +147,10 @@ window.banDevice = async () => {
   clearDeviceSelection();
 };
 
-// 3. HAPUS DEVICE SECARA PERMANEN (Fitur Baru)
+// REVISI: Nama fungsi dipastikan sinkron dengan pemanggil tombol HTML tanpa spasi
 window.hapusDevicePermanent = async () => {
   let id = deviceInput.value;
-  if(!id) return alert("Pilih HP dari daftar di bawah yang ingin dihapus datanya!");
+  if(!id) return alert("Pilih HP dari daftar di bawah dengan klik tombol 'Pilih HP Ini' terlebih dahulu!");
   
   if(confirm("Apakah Anda yakin ingin MENGHAPUS perangkat ini secara permanen dari database?")) {
     try {
@@ -177,7 +170,6 @@ function clearDeviceSelection() {
 
 /* ======================================================================= */
 
-/* MANAJEMEN DATA APK */
 window.simpanLinkAPK = async () => {
   let v = versiInput.value;
   let nama = namaApkInput.value.trim();
