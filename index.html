@@ -59,6 +59,21 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
+  /* 📱 STYLE BARU: PAPAN INFORMASI DEVICE PENYEWA */
+  .device-badge-container {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: white;
+    padding: 14px 18px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    border-left: 5px solid var(--primary);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+  }
+  .device-badge-container td { padding: 2px 0; vertical-align: top; }
+  .device-badge-container .label { color: #94a3b8; font-weight: 600; width: 110px; }
+  .device-badge-container .val { font-weight: 700; color: #f8fafc; }
+
   input, select {
     width: 100%;
     padding: 12px 16px;
@@ -93,14 +108,8 @@
     transition: all 0.2s;
   }
 
-  button:hover {
-    background-color: var(--primary-hover);
-    transform: translateY(-1px);
-  }
-
-  button:active {
-    transform: translateY(0);
-  }
+  button:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
 
   .download {
     display: block;
@@ -117,57 +126,20 @@
     transition: all 0.2s;
   }
 
-  .download:hover {
-    background-color: var(--success-hover);
-    transform: translateY(-1px);
-  }
+  .download:hover { background-color: var(--success-hover); transform: translateY(-1px); }
 
   .btn-copy {
-    background-color: #475569;
-    color: white;
-    padding: 10px;
-    font-size: 13px;
-    border-radius: 8px;
-    margin-top: 6px;
-    box-shadow: none;
+    background-color: #475569; color: white; padding: 10px; font-size: 13px; border-radius: 8px; margin-top: 6px; box-shadow: none;
   }
-  
   .btn-copy:hover { background-color: #334155; }
 
-  hr {
-    border: 0;
-    height: 1px;
-    background: var(--border);
-    margin: 24px 0;
-  }
+  hr { border: 0; height: 1px; background: var(--border); margin: 24px 0; }
+  .preview-media { width: 100%; max-height: 220px; margin-top: 12px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border); }
+  #qrcode canvas { max-width: 100%; height: auto !important; }
 
-  .preview-media {
-    width: 100%;
-    max-height: 220px;
-    margin-top: 12px;
-    border-radius: 12px;
-    object-fit: cover;
-    border: 1px solid var(--border);
-  }
-
-  #qrcode canvas {
-    max-width: 100%;
-    height: auto !important;
-  }
-
-  /* Status info login box */
   #loginBox { max-width: 450px; margin: 60px auto; }
   #error { color: var(--danger); text-align: center; font-weight: 600; }
-
-  /* Badge styling */
-  .badge-version {
-    background: #eff6ff;
-    color: var(--primary);
-    padding: 4px 10px;
-    border-radius: 99px;
-    font-size: 13px;
-    font-weight: 700;
-  }
+  .badge-version { background: #eff6ff; color: var(--primary); padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -189,6 +161,22 @@
 </div>
 
 <div id="content" style="display:none;">
+  
+  <div class="device-badge-container">
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td class="label">👤 Penyewa</td>
+        <td style="color:#94a3b8; width:10px;">:</td>
+        <td class="val" id="badgeNamaPenyewa">Memuat...</td>
+      </tr>
+      <tr>
+        <td class="label">🆔 Device ID</td>
+        <td style="color:#94a3b8;">:</td>
+        <td class="val" id="badgeIdPenyewa" style="font-family: monospace; font-size: 12px; color: #38bdf8;">-</td>
+      </tr>
+    </table>
+  </div>
+
   <h1>📂 Pusat Data Pribadi</h1>
 
   <h2>📒 Simpan Kontak Online</h2>
@@ -253,12 +241,19 @@ async function init(){
   if(!id){ id = crypto.randomUUID(); localStorage.setItem("device_id", id); }
   device_id = id;
 
+  // Pasang ID langsung ke komponen badge pelacak
+  document.getElementById("badgeIdPenyewa").innerText = id;
+
   onSnapshot(doc(db,"devices",id), async (snap) => {
     if(!snap.exists()){
       await setDoc(doc(db,"devices",id),{ status:"pending", nama_penyewa:"Belum Mengisi Nama", createdAt:Date.now(), ua:navigator.userAgent });
       return;
     }
     const data = snap.data();
+    
+    // Tulis nama penyewa aktif ke papan badge atas secara realtime
+    document.getElementById("badgeNamaPenyewa").innerText = data.nama_penyewa || "Penyewa Anonim";
+
     if(data.status === "banned"){
       localStorage.setItem("login","false");
       document.body.innerHTML="<div class='card' style='max-width:400px;margin:100px auto;text-align:center;border-top:4px solid var(--danger);'> <h2 style='color:var(--danger);justify-content:center;'>⛔ AKSES DITOLAK</h2><p style='color:var(--text-muted);'>Perangkat Anda telah diblokir secara permanen dari sistem.</p></div>";
