@@ -6,13 +6,13 @@
 <title>Admin Panel</title>
 <style>
 body{ font-family:Arial; background:#0f172a; color:white; padding:20px; margin:0; }
-h1{margin-bottom:10px;}
+h1, h2{margin-bottom:10px;}
 .card{ background:#1e293b; padding:15px; margin:10px 0; border-radius:12px; }
 input, button{ width:100%; padding:10px; margin-top:5px; border:none; border-radius:8px; font-size:15px; box-sizing: border-box; }
 input{ background: #334155; color: white; margin-bottom: 10px; }
-.green{background:#22c55e;color:white; margin-top: 10px;}
-.red{background:#ef4444;color:white;}
-.gray{background:#334155;color:white;}
+.green{background:#22c55e;color:white; margin-top: 10px; font-weight:bold; cursor:pointer;}
+.red{background:#ef4444;color:white; font-weight:bold; cursor:pointer;}
+.btn-delete{background:#ef4444; color:white; width:auto; padding:6px 12px; font-size:13px; margin-top:0; border-radius:6px; cursor:pointer;}
 </style>
 </head>
 <body>
@@ -24,22 +24,35 @@ input{ background: #334155; color: white; margin-bottom: 10px; }
 <input id="deviceInput" placeholder="Device ID Terpilih" readonly style="background:#1e293b; border:1px solid #475569;">
 <input id="pinInput" placeholder="Masukkan PIN Aktif untuk Perangkat (Contoh: 1234)">
 
-<button class="green" onclick="approve()">✅ Approve & Beri PIN</button>
-<button class="red" onclick="ban()">⛔ Ban HP</button>
-<button class="gray" onclick="hapusDevice()">🗑 Hapus Log HP</button>
-<hr>
-<h3>📋 Daftar Antrean / Status Perangkat HP</h3>
-<div id="deviceList">Loading...</div>
+<button class="green" onclick="approveDevice()">Setujui & Beri PIN</button>
+<button class="red" onclick="banDevice()" style="margin-top:5px;">Blokir Perangkat (BAN)</button>
+</div>
+
+<div class="card" style="border-top: 4px solid #22c55e;">
+<h2>📦 Input Link APK WA Sender (MediaFire/Drive)</h2>
+<input id="versiInput" type="number" placeholder="Versi APK (Contoh: 4)">
+<input id="namaApkInput" type="text" placeholder="Nama Aplikasi (Contoh: WA_Sender_v4.apk)">
+<input id="linkApkInput" type="text" placeholder="Tempel / Paste Link MediaFire / Drive Disini">
+<button class="green" onclick="simpanLinkAPK()">Kirim Link ke Aplikasi</button>
+<p id="apkStatus" style="color:#22c55e; font-weight:bold;"></p>
+
+<h3 style="margin-top:20px; border-top:1px solid #334155; padding-top:10px;">📋 Daftar APK Aktif (Bisa Dihapus)</h3>
+<div id="adminApkList"></div>
 </div>
 
 <div class="card">
-<h2>📊 Data Kontak Masuk (Realtime)</h2>
-<div id="userList">Loading...</div>
+<h2>⏳ Daftar Perangkat Terdeteksi</h2>
+<div id="deviceList"></div>
+</div>
+
+<div class="card">
+<h2>📒 Daftar Kontak Tersimpan</h2>
+<div id="userList"></div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
 apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
@@ -50,98 +63,124 @@ projectId:"data-pribadi-9cfe6"
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* APPROVE & SET PIN */
-window.approve = async() => {
-const id = deviceInput.value.trim();
-const pin = pinInput.value.trim();
-if(!id) return alert("Pilih HP dari list di bawah dahulu!");
-if(!pin) return alert("Tentukan PIN untuk penyewa ini!");
+window.approveDevice = async () => {
+  let id = deviceInput.value;
+  let pin = pinInput.value.trim();
+  if(!id || !pin) return alert("Pilih HP dan isi PIN terlebih dahulu!");
+  await setDoc(doc(db, "devices", id), { status: "approved", pin: pin }, { merge: true });
+  alert("HP Berhasil Disetujui!");
+};
 
-await setDoc(doc(db, "devices", id), {
-status: "approved",
-pin: pin
-}, { merge: true });
+window.banDevice = async () => {
+  let id = deviceInput.value;
+  if(!id) return alert("Pilih HP yang akan diblokir!");
+  await setDoc(doc(db, "devices", id), { status: "banned" }, { merge: true });
+  alert("HP Berhasil Diblokir!");
+};
 
-alert("✅ HP Berhasil Di-approve dengan PIN: " + pin);
-pinInput.value = "";
-deviceInput.value = "";
+/* MENYIMPAN LINK APK */
+window.simpanLinkAPK = async () => {
+  let v = versiInput.value;
+  let nama = namaApkInput.value.trim();
+  let link = linkApkInput.value.trim();
+
+  if(!v || !nama || !link) return alert("Semua kolom wajib diisi!");
+
+  let directLink = link;
+  if(link.includes("drive.google.com/file/d/")) {
+    let fileId = link.split("/file/d/")[1].split("/")[0];
+    directLink = `https://docs.google.com/uc?export=download&id=${fileId}`;
+  }
+
+  try {
+    document.getElementById("apkStatus").innerText = "Menyimpan link...";
+    await addDoc(collection(db, "apk"), {
+      versi: Number(v),
+      url: directLink,
+      nama: nama,
+      createdAt: Date.now()
+    });
+    document.getElementById("apkStatus").innerText = "✅ Link APK Berhasil Dikirim!";
+    versiInput.value = ""; namaApkInput.value = ""; linkApkInput.value = "";
+  } catch(e) {
+    alert("Gagal: " + e.message);
+  }
+};
+
+/* REALTIME LOAD DAFTAR APK DI ADMIN + TOMBOL HAPUS */
+function loadApkAdmin(){
+  const box = document.getElementById("adminApkList");
+  onSnapshot(collection(db, "apk"), (snap) => {
+    box.innerHTML = "";
+    let arr = [];
+    snap.forEach(d => {
+      arr.push({ id: d.id, ...d.data() });
+    });
+    // Urutkan versi terbesar di atas
+    arr.sort((a,b) => b.versi - a.versi);
+    
+    if(arr.length === 0){
+      box.innerHTML = "<p style='color:gray;font-size:14px;'>Belum ada APK di database.</p>";
+      return;
+    }
+
+    arr.forEach(a => {
+      box.innerHTML += `
+      <div style="display:flex; justify-content:space-between; align-items:center; background:#334155; padding:10px; margin:5px 0; border-radius:8px;">
+        <span>📦 <b>v${a.versi}</b> - ${a.nama}</span>
+        <button class="btn-delete" onclick="hapusAPK('${a.id}')">🗑️ Hapus</button>
+      </div>`;
+    });
+  });
 }
 
-/* BAN PERANGKAT */
-window.ban = async() => {
-const id = deviceInput.value.trim();
-if(!id) return alert("Pilih HP dari list di bawah dahulu!");
+/* FUNGSI MENGHAPUS SATU FILE APK DARI DATABASE FIRESTORE */
+window.hapusAPK = async (docId) => {
+  if(confirm("Apakah Anda yakin ingin menghapus file APK ini dari daftar?")) {
+    try {
+      await deleteDoc(doc(db, "apk", docId));
+      alert("APK Berhasil dihapus!");
+    } catch(e) {
+      alert("Gagal menghapus: " + e.message);
+    }
+  }
+};
 
-await setDoc(doc(db, "devices", id), {
-status: "banned"
-}, { merge: true });
-
-alert("⛔ HP Berhasil Dikunci Jarak Jauh (Banned)");
-deviceInput.value = "";
-}
-
-/* HAPUS DATABASE DEVICE */
-window.hapusDevice = async() => {
-const id = deviceInput.value.trim();
-if(!id) return alert("Pilih HP dari list di bawah dahulu!");
-
-if(confirm("Hapus total data log perangkat ini?")){
-await deleteDoc(doc(db, "devices", id));
-alert("🗑 Data log perangkat dihapus.");
-deviceInput.value = "";
-}
-}
-
-/* REALTIME DEVICE LIST DENGAN KODE NAMA PENYEWA */
 function loadDevices(){
-const box = document.getElementById("deviceList");
-onSnapshot(collection(db, "devices"), (snap) => {
-box.innerHTML = "";
-snap.forEach(d => {
-let data = d.data();
-let statusColor = data.status === 'approved' ? '#22c55e' : (data.status === 'banned' ? '#ef4444' : '#eab308');
-box.innerHTML += `
-<div class="card" style="border-left: 5px solid ${statusColor};">
-👤 Nama Penyewa: <b>${data.nama_penyewa || 'Belum Mengisi'}</b><br>
-📱 Device ID: <small style="color:#94a3b8;">${d.id}</small><br>
-🟢 Status: <b style="color:${statusColor}">${data.status.toUpperCase()}</b><br>
-🔑 PIN Aktif: <b>${data.pin || '-'}</b><br>
-<button onclick="isi('${d.id}')" style="background:#334155; color:white; width:auto; padding:5px 15px; margin-top:8px;">Pilih HP Ini</button>
-</div>`;
-});
-});
+  const box = document.getElementById("deviceList");
+  onSnapshot(collection(db, "devices"), (snap) => {
+    box.innerHTML = "";
+    snap.forEach(d => {
+      let data = d.data();
+      let statusColor = data.status === 'approved' ? '#22c55e' : (data.status === 'banned' ? '#ef4444' : '#eab308');
+      box.innerHTML += `
+      <div class="card" style="border-left: 5px solid ${statusColor}; background: #1e293b;">
+        👤 Nama: <b>${data.nama_penyewa || 'Belum Mengisi'}</b><br>
+        📱 ID: <small>${d.id}</small><br>
+        🟢 Status: <b style="color:${statusColor}">${data.status.toUpperCase()}</b><br>
+        🔑 PIN: <b>${data.pin || '-'}</b><br>
+        <button onclick="isi('${d.id}')" style="background:#475569; color:white; width:auto; padding:5px 15px; margin-top:8px;">Pilih HP Ini</button>
+      </div>`;
+    });
+  });
 }
 
-window.isi = (id) => {
-deviceInput.value = id;
-}
-
-/* REALTIME USER CONTACT LIST */
 function loadUsers(){
-const box = document.getElementById("userList");
-onSnapshot(collection(db, "kontak"), (snap) => {
-box.innerHTML = "";
-snap.forEach(d => {
-let u = d.data();
-box.innerHTML += `
-<div class="card">
-<b>👤 ${u.nama}</b><br>
-📞 ${u.hp}<br>
-📧 ${u.email || '-'}<br><br>
-<button class="red" onclick="hapusUser('${d.id}')" style="width:auto; padding:5px 10px;">Hapus</button>
-</div>`;
-});
-});
+  const box = document.getElementById("userList");
+  onSnapshot(collection(db, "kontak"), (snap) => {
+    box.innerHTML = "";
+    snap.forEach(d => {
+      let u = d.data();
+      box.innerHTML += `<div class="card" style="background: #1e293b;">👤 <b>${u.nama}</b> - 📞 ${u.hp}</div>`;
+    });
+  });
 }
 
-window.hapusUser = async(id) => {
-if(confirm("Hapus data kontak ini?")){
-await deleteDoc(doc(db, "kontak", id));
-}
-}
+window.isi = (id) => { deviceInput.value = id; }
 
 loadDevices();
 loadUsers();
+loadApkAdmin();
 </script>
 </body>
 </html>
