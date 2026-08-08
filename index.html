@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pusat Data Pribadi - Premium Edition</title>
+<meta name="description" content="Sistem manajemen perangkat penyewa HP: registrasi, verifikasi, dan penyimpanan data.">
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <style>
   :root {
@@ -59,7 +60,6 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
-  /* 📱 STYLE BARU: PAPAN INFORMASI DEVICE PENYEWA */
   .device-badge-container {
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     color: white;
@@ -94,6 +94,8 @@
     box-shadow: 0 0 0 3px rgba(37, 99, 233, 0.15);
   }
 
+  .field-hint { font-size: 12px; color: var(--text-muted); margin-top: -8px; margin-bottom: 10px; }
+
   button {
     width: 100%;
     padding: 14px;
@@ -108,8 +110,9 @@
     transition: all 0.2s;
   }
 
-  button:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
-  button:active { transform: translateY(0); }
+  button:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+  button:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
+  button:active:not(:disabled) { transform: translateY(0); }
 
   .download {
     display: block;
@@ -146,22 +149,22 @@
 
 <div id="loginBox" class="card">
   <h2 style="justify-content: center;">🔒 Perangkat Terkunci</h2>
-  <p id="info" style="text-align:center; color: var(--primary); font-weight: 600; font-size: 14px;"></p>
+  <p id="info" style="text-align:center; color: var(--primary); font-weight: 600; font-size: 14px;">Menghubungkan ke sistem...</p>
 
   <div id="registerForm" style="display:none;">
-    <input type="text" id="namaPenyewaInput" placeholder="Nama Penyewa HP">
+    <input type="text" id="namaPenyewaInput" placeholder="Nama Penyewa HP" maxlength="60">
     <button onclick="kirimNamaPenyewa()" style="background-color: var(--success);">📩 Ajukan Akses ke Admin</button>
   </div>
 
   <div id="pinForm" style="display:none;">
-    <input type="password" id="pin" placeholder="PIN Validasi">
+    <input type="password" id="pin" placeholder="PIN Validasi" inputmode="numeric" maxlength="8">
     <button onclick="loginPIN()">Masuk Sistem</button>
   </div>
   <p id="error"></p>
 </div>
 
 <div id="content" style="display:none;">
-  
+
   <div class="device-badge-container">
     <table style="width: 100%; border-collapse: collapse;">
       <tr>
@@ -181,9 +184,9 @@
 
   <h2>📒 Simpan Kontak Online</h2>
   <div class="card">
-    <input id="nama" placeholder="Nama Lengkap">
-    <input id="hp" placeholder="Nomor Telepon/HP">
-    <input id="email" placeholder="Alamat Email (Opsional)">
+    <input id="nama" placeholder="Nama Lengkap" maxlength="80">
+    <input id="hp" placeholder="Nomor Telepon/HP (contoh: 081234567890)" inputmode="tel" maxlength="15">
+    <input id="email" placeholder="Alamat Email (Opsional)" type="email" maxlength="120">
     <button onclick="simpanKontakOnline()">Simpan Kontak</button>
   </div>
   <div id="hasil"></div>
@@ -191,7 +194,7 @@
 
   <h2>📁 File Dokumen Penting</h2>
   <div class="card" style="padding: 10px; overflow: hidden;">
-    <iframe src="https://drive.google.com/file/d/1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa/preview" width="100%" height="300" style="border: none; border-radius: 8px;"></iframe>
+    <iframe src="https://drive.google.com/file/d/1ASdXZ2ps-i7KaAMvjdtCEDDxrNYPQWRa/preview" width="100%" height="300" style="border: none; border-radius: 8px;" loading="lazy" title="Dokumen Penting"></iframe>
   </div>
   <hr>
 
@@ -199,7 +202,7 @@
   <div class="card">
     <input type="file" id="fileInput" accept="image/*,audio/*,video/*">
     <div id="preview" style="margin: 8px 0; color: var(--text-muted); font-size: 13px;"></div>
-    <button onclick="uploadFile()">Mulai Unggah File</button>
+    <button onclick="uploadFile()" id="uploadBtn">Mulai Unggah File</button>
     <div id="uploadStatus" style="color: var(--primary); font-weight: 600; font-size: 14px; text-align: center; margin-top: 8px;"></div>
     <div id="gallery"></div>
   </div>
@@ -224,145 +227,208 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc,
+  onSnapshot, query, where
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth, signInAnonymously, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+// NOTE: this is a public *client* Firebase config (safe to expose per Firebase's
+// own docs) — the actual security boundary is enforced by Firestore Security
+// Rules (see firestore.rules) plus Firebase Authentication, not by hiding this.
 const firebaseConfig = {
-apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
-authDomain:"data-pribadi-9cfe6.firebaseapp.com",
-projectId:"data-pribadi-9cfe6"
+  apiKey: "AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
+  authDomain: "data-pribadi-9cfe6.firebaseapp.com",
+  projectId: "data-pribadi-9cfe6"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 let device_id = "";
 
-async function init(){
-  let id = localStorage.getItem("device_id");
-  if(!id){ id = crypto.randomUUID(); localStorage.setItem("device_id", id); }
-  device_id = id;
+// ---------- helpers ----------
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+function isValidPhone(v) {
+  return /^(\+62|62|0)8[0-9]{8,12}$/.test(v.trim());
+}
+function isValidEmail(v) {
+  return v.trim() === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
 
-  // Pasang ID langsung ke komponen badge pelacak
-  document.getElementById("badgeIdPenyewa").innerText = id;
+// ---------- auth ----------
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    device_id = user.uid;
+    document.getElementById("badgeIdPenyewa").innerText = device_id;
+    watchDevice();
+  }
+});
 
-  onSnapshot(doc(db,"devices",id), async (snap) => {
-    if(!snap.exists()){
-      await setDoc(doc(db,"devices",id),{ status:"pending", nama_penyewa:"Belum Mengisi Nama", createdAt:Date.now(), ua:navigator.userAgent });
+signInAnonymously(auth).catch((err) => {
+  document.getElementById("info").innerText = "Gagal terhubung ke sistem.";
+  document.getElementById("error").innerText = "Error: " + err.message;
+});
+
+// ---------- device status ----------
+function watchDevice() {
+  onSnapshot(doc(db, "devices", device_id), async (snap) => {
+    if (!snap.exists()) {
+      await setDoc(doc(db, "devices", device_id), {
+        status: "pending",
+        nama_penyewa: "Belum Mengisi Nama",
+        createdAt: Date.now(),
+        ua: navigator.userAgent
+      });
       return;
     }
     const data = snap.data();
-    
-    // Tulis nama penyewa aktif ke papan badge atas secara realtime
     document.getElementById("badgeNamaPenyewa").innerText = data.nama_penyewa || "Penyewa Anonim";
 
-    if(data.status === "banned"){
-      localStorage.setItem("login","false");
-      document.body.innerHTML="<div class='card' style='max-width:400px;margin:100px auto;text-align:center;border-top:4px solid var(--danger);'> <h2 style='color:var(--danger);justify-content:center;'>⛔ AKSES DITOLAK</h2><p style='color:var(--text-muted);'>Perangkat Anda telah diblokir secara permanen dari sistem.</p></div>";
+    if (data.status === "banned") {
+      sessionStorage.removeItem("login");
+      document.body.innerHTML = "<div class='card' style='max-width:400px;margin:100px auto;text-align:center;border-top:4px solid var(--danger);'><h2 style='color:var(--danger);justify-content:center;'>⛔ AKSES DITOLAK</h2><p style='color:var(--text-muted);'>Perangkat Anda telah diblokir secara permanen dari sistem.</p></div>";
       return;
     }
-    if(data.status === "pending"){
-      loginBox.style.display="block"; content.style.display="none"; pinForm.style.display="none"; registerForm.style.display="block";
-      if(data.nama_penyewa && data.nama_penyewa !== "Belum Mengisi Nama") {
-        info.innerHTML = `⏳ Permintaan Akses Diproses...<br><span style='color:var(--text-muted);font-weight:normal;'>Nama: ${data.nama_penyewa}</span>`; registerForm.style.display = "none";
-      } else { info.innerHTML = `⚠️ Perangkat Baru Terdeteksi!<br><span style='color:var(--text-muted);font-weight:normal;'>ID Perangkat: ${device_id}</span>`; }
+    if (data.status === "pending") {
+      loginBox.style.display = "block"; content.style.display = "none";
+      pinForm.style.display = "none"; registerForm.style.display = "block";
+      if (data.nama_penyewa && data.nama_penyewa !== "Belum Mengisi Nama") {
+        info.innerHTML = `⏳ Permintaan Akses Diproses...<br><span style='color:var(--text-muted);font-weight:normal;'>Nama: ${escapeHtml(data.nama_penyewa)}</span>`;
+        registerForm.style.display = "none";
+      } else {
+        info.innerHTML = `⚠️ Perangkat Baru Terdeteksi!<br><span style='color:var(--text-muted);font-weight:normal;'>ID Perangkat: ${escapeHtml(device_id)}</span>`;
+      }
       return;
     }
-    if(data.status === "approved" && localStorage.getItem("login") === "true"){
-      loginBox.style.display="none"; content.style.display="block"; tampil(); listenAPK();
+    if (data.status === "approved" && sessionStorage.getItem("login") === "true") {
+      loginBox.style.display = "none"; content.style.display = "block";
+      tampil(); listenAPK();
     } else {
-      loginBox.style.display="block"; content.style.display="none"; registerForm.style.display="none"; pinForm.style.display="block";
-      info.innerHTML = `🔓 Perangkat Terverifikasi: <b>${data.nama_penyewa}</b>.<br><span style='font-weight:normal;color:var(--text-muted);font-size:13px;'>Silakan masukkan PIN Otorisasi Anda:</span>`;
+      loginBox.style.display = "block"; content.style.display = "none";
+      registerForm.style.display = "none"; pinForm.style.display = "block";
+      info.innerHTML = `🔓 Perangkat Terverifikasi: <b>${escapeHtml(data.nama_penyewa)}</b>.<br><span style='font-weight:normal;color:var(--text-muted);font-size:13px;'>Silakan masukkan PIN Otorisasi Anda:</span>`;
     }
+  }, (err) => {
+    error.innerText = "Gagal memuat status perangkat: " + err.message;
   });
 }
 
 window.kirimNamaPenyewa = async () => {
   const namaInput = namaPenyewaInput.value.trim();
-  if(!namaInput) return alert("Harap masukkan nama Anda!");
+  if (!namaInput) return alert("Harap masukkan nama Anda!");
+  if (namaInput.length > 60) return alert("Nama terlalu panjang (maks 60 karakter).");
   await setDoc(doc(db, "devices", device_id), { nama_penyewa: namaInput }, { merge: true });
 };
 
-window.loginPIN = async function(){
-  const snap = await getDoc(doc(db,"devices",device_id));
-  if(snap.exists() && snap.data().pin === pin.value.trim()){
-    localStorage.setItem("login","true"); loginBox.style.display="none"; content.style.display="block"; tampil(); listenAPK();
-  } else { error.innerText = "PIN Salah! Gagal Memvalidasi Perangkat."; }
+window.loginPIN = async function () {
+  const snap = await getDoc(doc(db, "devices", device_id));
+  if (snap.exists() && snap.data().pin === pin.value.trim()) {
+    sessionStorage.setItem("login", "true");
+    loginBox.style.display = "none"; content.style.display = "block";
+    tampil(); listenAPK();
+  } else {
+    error.innerText = "PIN Salah! Gagal Memvalidasi Perangkat.";
+  }
 };
 
-window.simpanKontakOnline = async()=>{
-  if(!nama.value || !hp.value) return alert("Nama & No HP wajib diisi!");
-  await addDoc(collection(db,"kontak"),{ nama:nama.value, hp:hp.value, email:email.value, device_id:device_id });
-  nama.value=""; hp.value=""; email.value=""; tampil();
+window.simpanKontakOnline = async () => {
+  const namaVal = nama.value.trim();
+  const hpVal = hp.value.trim();
+  const emailVal = email.value.trim();
+  if (!namaVal || !hpVal) return alert("Nama & No HP wajib diisi!");
+  if (namaVal.length > 80) return alert("Nama terlalu panjang.");
+  if (!isValidPhone(hpVal)) return alert("Format nomor HP tidak valid. Contoh: 081234567890");
+  if (!isValidEmail(emailVal)) return alert("Format email tidak valid.");
+  await addDoc(collection(db, "kontak"), { nama: namaVal, hp: hpVal, email: emailVal, device_id: device_id });
+  nama.value = ""; hp.value = ""; email.value = ""; tampil();
 };
 
-async function tampil(){
-  hasil.innerHTML="";
-  const snap = await getDocs(collection(db,"kontak"));
-  snap.forEach(d=>{
-    let k=d.data();
-    if(k.device_id===device_id){
-      hasil.innerHTML+=`<div class="card" style="border-left:4px solid var(--primary);"><b>👤 ${k.nama}</b><br><span style="color:var(--text-muted);font-size:14px;">📞 ${k.hp} | 📧 ${k.email || '-'}</span></div>`;
-    }
+async function tampil() {
+  hasil.innerHTML = "";
+  const q = query(collection(db, "kontak"), where("device_id", "==", device_id));
+  const snap = await getDocs(q);
+  snap.forEach((d) => {
+    const k = d.data();
+    hasil.innerHTML += `<div class="card" style="border-left:4px solid var(--primary);"><b>👤 ${escapeHtml(k.nama)}</b><br><span style="color:var(--text-muted);font-size:14px;">📞 ${escapeHtml(k.hp)} | 📧 ${escapeHtml(k.email) || "-"}</span></div>`;
   });
 }
 
-function listenAPK(){
+function listenAPK() {
   const apkList = document.getElementById("apkList");
   onSnapshot(collection(db, "apk"), (snap) => {
     apkList.innerHTML = "";
-    let arr = [];
-    snap.forEach(d => arr.push(d.data()));
-    arr.sort((a,b) => b.versi - a.versi);
-    if(arr.length === 0) {
+    const arr = [];
+    snap.forEach((d) => arr.push(d.data()));
+    arr.sort((a, b) => b.versi - a.versi);
+    if (arr.length === 0) {
       apkList.innerHTML = "<p style='color:var(--text-muted);text-align:center;margin:0;font-size:14px;'>Tidak ada berkas APK rilis yang aktif.</p>";
       return;
     }
-    arr.forEach(a => {
+    arr.forEach((a) => {
       apkList.innerHTML += `
       <div class="card" style="margin: 8px 0; border-left: 5px solid var(--success); display:flex; flex-direction:column; gap:6px;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <span style="font-weight:700; color:#0f172a;">${a.nama || 'Aplikasi Paket'}</span>
-          <span class="badge-version">v${a.versi}</span>
+          <span style="font-weight:700; color:#0f172a;">${escapeHtml(a.nama || "Aplikasi Paket")}</span>
+          <span class="badge-version">v${escapeHtml(String(a.versi))}</span>
         </div>
-        <a href="${a.url}" class="download" target="_blank">Download & Instal APK</a>
+        <a href="${encodeURI(a.url)}" class="download" target="_blank" rel="noopener noreferrer">Download &amp; Instal APK</a>
       </div>`;
     });
   });
 }
 
-init();
-
 window.prosesMediaFireLink = () => {
-  let link = document.getElementById("transferLinkInput").value.trim();
-  if(!link) return alert("Tempel link target!");
+  const link = document.getElementById("transferLinkInput").value.trim();
+  if (!link) return alert("Tempel link target!");
+  if (!/^https?:\/\//i.test(link)) return alert("Link harus berupa URL yang valid (diawali http/https).");
   let directLink = link;
-  if(link.includes("drive.google.com/file/d/")) {
+  if (link.includes("drive.google.com/file/d/")) {
     const fileId = link.split("/file/d/")[1].split("/")[0];
     directLink = `https://docs.google.com/uc?export=download&id=${fileId}`;
   }
-  document.getElementById("transferResult").innerHTML = `<a href="${directLink}" class="download" target="_blank" style="background-color: var(--primary);">Download / Buka Halaman File</a>`;
-  const canvas = document.getElementById('qrcode');
-  QRCode.toCanvas(canvas, directLink, { width: 180, margin: 1 }, function (error) { if (error) console.error(error); });
+  document.getElementById("transferResult").innerHTML = `<a href="${encodeURI(directLink)}" class="download" target="_blank" rel="noopener noreferrer" style="background-color: var(--primary);">Download / Buka Halaman File</a>`;
+  const canvas = document.getElementById("qrcode");
+  QRCode.toCanvas(canvas, directLink, { width: 180, margin: 1 }, (error) => { if (error) console.error(error); });
 };
 </script>
 
 <script>
 const CLOUD_NAME = "dkisbfx29";
 const UPLOAD_PRESET = "ml_default";
+const MAX_UPLOAD_MB = 25;
 
-fileInput.onchange = e => {
+function escapeHtmlLegacy(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+fileInput.onchange = (e) => {
   const f = e.target.files[0];
-  if(f) {
+  if (f) {
     let typeInfo = "Berkas Dokumen";
-    if(f.type.startsWith("image/")) typeInfo = "🖼️ Gambar/Foto";
-    else if(f.type.startsWith("audio/")) typeInfo = "🎵 Musik/Audio Mp3";
-    else if(f.type.startsWith("video/")) typeInfo = "🎥 File Rekaman Video";
-    preview.innerHTML = `Terdeteksi: <b>${typeInfo}</b><br><span style="font-size:12px;color:var(--text-muted);">${f.name} (${(f.size/(1024*1024)).toFixed(2)} MB)</span>`;
+    if (f.type.startsWith("image/")) typeInfo = "🖼️ Gambar/Foto";
+    else if (f.type.startsWith("audio/")) typeInfo = "🎵 Musik/Audio Mp3";
+    else if (f.type.startsWith("video/")) typeInfo = "🎥 File Rekaman Video";
+    preview.innerHTML = `Terdeteksi: <b>${typeInfo}</b><br><span style="font-size:12px;color:var(--text-muted);">${escapeHtmlLegacy(f.name)} (${(f.size / (1024 * 1024)).toFixed(2)} MB)</span>`;
   }
 };
 
-function uploadFile(){
+function uploadFile() {
   const f = fileInput.files[0];
-  if(!f) return alert("Pilih media berkas!");
+  if (!f) return alert("Pilih media berkas!");
+  if (f.size > MAX_UPLOAD_MB * 1024 * 1024) return alert(`Ukuran file maksimal ${MAX_UPLOAD_MB} MB.`);
+
+  const uploadBtn = document.getElementById("uploadBtn");
+  uploadBtn.disabled = true;
+
   const fd = new FormData();
   fd.append("file", f);
   fd.append("upload_preset", UPLOAD_PRESET);
@@ -371,15 +437,17 @@ function uploadFile(){
   const xhr = new XMLHttpRequest();
   xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
   xhr.onload = () => {
+    uploadBtn.disabled = false;
     document.getElementById("uploadStatus").innerText = "";
-    const d = JSON.parse(xhr.responseText);
-    if(d.secure_url) {
+    let d;
+    try { d = JSON.parse(xhr.responseText); } catch { d = {}; }
+    if (d.secure_url) {
       let embedHTML = "";
-      if(d.resource_type === "image") {
+      if (d.resource_type === "image") {
         embedHTML = `<img src="${d.secure_url}" class="preview-media" alt="Preview">`;
-      } else if(d.resource_type === "video" && f.type.startsWith("audio/")) {
+      } else if (d.resource_type === "video" && f.type.startsWith("audio/")) {
         embedHTML = `<audio controls class="preview-media" style="height:45px; margin-top:10px;"><source src="${d.secure_url}" type="${f.type}"></audio>`;
-      } else if(d.resource_type === "video") {
+      } else if (d.resource_type === "video") {
         embedHTML = `<video controls class="preview-media"><source src="${d.secure_url}" type="${f.type}"></video>`;
       }
 
@@ -388,12 +456,19 @@ function uploadFile(){
           <p style="color:var(--success); font-weight:700; margin:0 0 6px 0; font-size:14px;">✅ Upload Selesai!</p>
           <input type="text" value="${d.secure_url}" id="urlResult" readonly style="margin-bottom:6px; background:#e2e8f0; font-size:13px;">
           <button class="btn-copy" onclick="salinTautanHasil()">📋 Salin Tautan URL</button>
-          <a href="${d.secure_url}" target="_blank" class="download" style="background-color: #64748b; font-size: 14px; padding: 10px;">Lihat File Asli</a>
+          <a href="${d.secure_url}" target="_blank" rel="noopener noreferrer" class="download" style="background-color: #64748b; font-size: 14px; padding: 10px;">Lihat File Asli</a>
           ${embedHTML}
         </div>
       ` + gallery.innerHTML;
       fileInput.value = ""; preview.innerHTML = "";
-    } else { alert("Ukuran berkas melebihi batas akun gratis!"); }
+    } else {
+      alert("Upload gagal. Ukuran berkas mungkin melebihi batas akun gratis.");
+    }
+  };
+  xhr.onerror = () => {
+    uploadBtn.disabled = false;
+    document.getElementById("uploadStatus").innerText = "";
+    alert("Gagal terhubung ke server upload. Periksa koneksi internet Anda.");
   };
   xhr.send(fd);
 }
