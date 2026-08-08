@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Panel - Secured Edition</title>
+<meta name="description" content="Panel admin untuk mengelola perangkat penyewa, kontak, dan rilis APK.">
+<meta name="robots" content="noindex, nofollow">
 <style>
   :root {
     --bg: #0f172a;
@@ -20,21 +22,22 @@
   body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; margin: 0; }
   h1, h2, h3 { margin: 0 0 12px 0; }
   .card { background: var(--card); padding: 20px; margin-bottom: 16px; border-radius: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2); border: 1px solid var(--border); box-sizing: border-box; }
-  
+
   input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 8px; background: #1e293b; color: white; font-size: 15px; box-sizing: border-box; }
   input:focus { outline: 2px solid var(--primary); background: #0f172a; }
-  
+
   button { width: 100%; padding: 12px; font-weight: bold; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; transition: all 0.2s; margin-bottom: 8px; color: white; }
-  button:active { transform: scale(0.98); }
-  
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  button:active:not(:disabled) { transform: scale(0.98); }
+
   .btn-blue { background: var(--primary); }
   .btn-green { background: var(--green); }
   .btn-red { background: var(--red); }
   .btn-orange { background: var(--orange); }
-  
+
   .btn-small { width: auto; padding: 6px 12px; font-size: 13px; margin: 0; }
   .flex-group { display: flex; justify-content: space-between; align-items: center; background: #334155; padding: 10px; margin: 6px 0; border-radius: 8px; }
-  
+
   #loginAdminBox { max-width: 400px; margin: 80px auto; text-align: center; }
 </style>
 </head>
@@ -42,9 +45,10 @@
 
 <div id="loginAdminBox" class="card">
   <h2>🔐 Verifikasi Akses Admin</h2>
-  <p style="color: var(--text-muted); font-size: 14px;">Silakan masukkan PIN Khusus Admin untuk mengelola sistem.</p>
-  <input type="password" id="adminPinInput" placeholder="Masukkan PIN Admin">
-  <button class="btn-blue" onclick="cekLoginAdmin()">Masuk Panel</button>
+  <p style="color: var(--text-muted); font-size: 14px;">Masuk dengan akun admin yang terdaftar di Firebase Authentication.</p>
+  <input type="email" id="adminEmailInput" placeholder="Email Admin" autocomplete="username">
+  <input type="password" id="adminPasswordInput" placeholder="Kata Sandi Admin" autocomplete="current-password">
+  <button class="btn-blue" onclick="cekLoginAdmin()" id="loginBtn">Masuk Panel</button>
   <p id="loginError" style="color: var(--red); font-weight: bold; font-size: 14px; margin-top: 8px;"></p>
 </div>
 
@@ -54,7 +58,7 @@
   <div class="card" style="border-top: 4px solid var(--primary);">
     <h2>📱 Device Control</h2>
     <input id="deviceInput" placeholder="Device ID Terpilih (Klik 'Pilih HP Ini' di bawah)" readonly style="background:#0f172a; color: var(--text-muted);">
-    <input id="pinInput" placeholder="Masukkan PIN Aktif untuk Perangkat (Contoh: 1234)">
+    <input id="pinInput" placeholder="PIN Aktif untuk Perangkat (4-8 digit angka)" inputmode="numeric" maxlength="8">
 
     <button class="btn-green" onclick="approveDevice()">1. Setujui & Beri PIN</button>
     <button class="btn-orange" onclick="banDevice()">2. Blokir Perangkat (BAN)</button>
@@ -63,8 +67,8 @@
 
   <div class="card" style="border-top: 4px solid var(--green);">
     <h2>📦 Input Link APK VERSION (MediaFire/Drive)</h2>
-    <input id="versiInput" type="number" placeholder="Versi APK (Contoh: 4)">
-    <input id="namaApkInput" type="text" placeholder="Nama Aplikasi (Contoh: WA_Sender_v4.apk)">
+    <input id="versiInput" type="number" min="1" step="1" placeholder="Versi APK (Contoh: 4)">
+    <input id="namaApkInput" type="text" maxlength="80" placeholder="Nama Aplikasi (Contoh: WA_Sender_v4.apk)">
     <input id="linkApkInput" type="text" placeholder="Tempel / Paste Link MediaFire / Drive Disini">
     <button class="btn-green" onclick="simpanLinkAPK()">Kirim Link ke Aplikasi</button>
     <p id="apkStatus" style="color: var(--green); font-weight: bold; margin: 4px 0 0 0;"></p>
@@ -82,34 +86,79 @@
     <h2>📒 Daftar Kontak Tersimpan</h2>
     <div id="userList"></div>
   </div>
-  
+
   <button class="btn-red" onclick="logoutAdmin()" style="max-width: 150px; margin-top: 10px;">➔ Keluar Admin</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
-apiKey:"AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
-authDomain:"data-pribadi-9cfe6.firebaseapp.com",
-projectId:"data-pribadi-9cfe6"
+  apiKey: "AIzaSyCn-bZackCi5wAPjbmDHK4Ur-qt0Ft3Xjs",
+  authDomain: "data-pribadi-9cfe6.firebaseapp.com",
+  projectId: "data-pribadi-9cfe6"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-const PIN_RAHASIA_ADMIN = "8686"; 
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
 
-window.cekLoginAdmin = () => {
-  const pinInput = document.getElementById("adminPinInput").value.trim();
-  if (pinInput === PIN_RAHASIA_ADMIN) {
-    sessionStorage.setItem("admin_authenticated", "true");
-    bukaPanelAdmin();
-  } else {
-    document.getElementById("loginError").innerText = "❌ PIN Admin Salah! Akses ditolak.";
+// ---------- login (Firebase Authentication, not a hardcoded PIN) ----------
+window.cekLoginAdmin = async () => {
+  const email = document.getElementById("adminEmailInput").value.trim();
+  const password = document.getElementById("adminPasswordInput").value;
+  const loginBtn = document.getElementById("loginBtn");
+  document.getElementById("loginError").innerText = "";
+  if (!email || !password) {
+    document.getElementById("loginError").innerText = "❌ Email dan kata sandi wajib diisi.";
+    return;
+  }
+  loginBtn.disabled = true;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    // onAuthStateChanged below handles the rest (including the admin check)
+  } catch (e) {
+    document.getElementById("loginError").innerText = "❌ Login gagal: " + e.message;
+  } finally {
+    loginBtn.disabled = false;
   }
 };
+
+// ---------- auth state / authorization check ----------
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("loginAdminBox").style.display = "block";
+    document.getElementById("adminContent").style.display = "none";
+    return;
+  }
+  try {
+    // Being logged in is not enough — the account must also have a document
+    // in the `admins` collection (create this manually in the Firebase
+    // console after creating the admin account; see README.md).
+    const adminSnap = await getDoc(doc(db, "admins", user.uid));
+    if (!adminSnap.exists()) {
+      document.getElementById("loginError").innerText = "❌ Akun ini tidak memiliki akses admin.";
+      await signOut(auth);
+      return;
+    }
+    bukaPanelAdmin();
+  } catch (e) {
+    document.getElementById("loginError").innerText = "❌ Gagal memverifikasi akses: " + e.message;
+    await signOut(auth);
+  }
+});
 
 function bukaPanelAdmin() {
   document.getElementById("loginAdminBox").style.display = "none";
@@ -119,40 +168,34 @@ function bukaPanelAdmin() {
   loadApkAdmin();
 }
 
-window.logoutAdmin = () => {
-  sessionStorage.removeItem("admin_authenticated");
-  window.location.reload();
+window.logoutAdmin = async () => {
+  await signOut(auth);
 };
-
-if (sessionStorage.getItem("admin_authenticated") === "true") {
-  bukaPanelAdmin();
-}
 
 /* ==================== CONTROL FUNCTIONS ==================== */
 
 window.approveDevice = async () => {
-  let id = deviceInput.value;
-  let pin = pinInput.value.trim();
-  if(!id || !pin) return alert("Pilih HP dari daftar di bawah dan isi PIN terlebih dahulu!");
+  const id = deviceInput.value;
+  const pin = pinInput.value.trim();
+  if (!id || !pin) return alert("Pilih HP dari daftar di bawah dan isi PIN terlebih dahulu!");
+  if (!/^[0-9]{4,8}$/.test(pin)) return alert("PIN harus berupa 4-8 digit angka.");
   await setDoc(doc(db, "devices", id), { status: "approved", pin: pin }, { merge: true });
   alert("✅ Status Perangkat Berhasil Diubah: APPROVED!");
   clearDeviceSelection();
 };
 
 window.banDevice = async () => {
-  let id = deviceInput.value;
-  if(!id) return alert("Pilih HP dari daftar di bawah yang akan diblokir!");
+  const id = deviceInput.value;
+  if (!id) return alert("Pilih HP dari daftar di bawah yang akan diblokir!");
   await setDoc(doc(db, "devices", id), { status: "banned" }, { merge: true });
   alert("⛔ Perangkat Berhasil DIBLOKIR!");
   clearDeviceSelection();
 };
 
-// REVISI: Nama fungsi dipastikan sinkron dengan pemanggil tombol HTML tanpa spasi
 window.hapusDevicePermanent = async () => {
-  let id = deviceInput.value;
-  if(!id) return alert("Pilih HP dari daftar di bawah dengan klik tombol 'Pilih HP Ini' terlebih dahulu!");
-  
-  if(confirm("Apakah Anda yakin ingin MENGHAPUS perangkat ini secara permanen dari database?")) {
+  const id = deviceInput.value;
+  if (!id) return alert("Pilih HP dari daftar di bawah dengan klik tombol 'Pilih HP Ini' terlebih dahulu!");
+  if (confirm("Apakah Anda yakin ingin MENGHAPUS perangkat ini secara permanen dari database?")) {
     try {
       await deleteDoc(doc(db, "devices", id));
       alert("🗑️ Perangkat berhasil dihapus total dari sistem!");
@@ -171,21 +214,23 @@ function clearDeviceSelection() {
 /* ======================================================================= */
 
 window.simpanLinkAPK = async () => {
-  let v = versiInput.value;
-  let nama = namaApkInput.value.trim();
-  let link = linkApkInput.value.trim();
+  const v = versiInput.value;
+  const nama = namaApkInput.value.trim();
+  const link = linkApkInput.value.trim();
 
-  if(!v || !nama || !link) return alert("Semua kolom wajib diisi!");
+  if (!v || !nama || !link) return alert("Semua kolom wajib diisi!");
+  if (Number(v) <= 0) return alert("Versi harus berupa angka positif.");
+  if (!/^https?:\/\//i.test(link)) return alert("Link harus berupa URL yang valid (diawali http/https).");
 
   let directLink = link;
-  if(link.includes("drive.google.com/file/d/")) {
-    let fileId = link.split("/file/d/")[1].split("/")[0];
+  if (link.includes("drive.google.com/file/d/")) {
+    const fileId = link.split("/file/d/")[1].split("/")[0];
     directLink = `https://docs.google.com/uc?export=download&id=${fileId}`;
   }
 
   try {
     document.getElementById("apkStatus").innerText = "Menyimpan data...";
-    await addDoc(collection(db, "apk"), {
+    await setDoc(doc(collection(db, "apk")), {
       versi: Number(v),
       url: directLink,
       nama: nama,
@@ -193,27 +238,27 @@ window.simpanLinkAPK = async () => {
     });
     document.getElementById("apkStatus").innerText = "✅ Tautan Baru Berhasil Ditambahkan!";
     versiInput.value = ""; namaApkInput.value = ""; linkApkInput.value = "";
-  } catch(e) {
+  } catch (e) {
     alert("Gagal: " + e.message);
   }
 };
 
-function loadApkAdmin(){
+function loadApkAdmin() {
   const box = document.getElementById("adminApkList");
   onSnapshot(collection(db, "apk"), (snap) => {
     box.innerHTML = "";
-    let arr = [];
-    snap.forEach(d => { arr.push({ id: d.id, ...d.data() }); });
-    arr.sort((a,b) => b.versi - a.versi);
-    
-    if(arr.length === 0){
+    const arr = [];
+    snap.forEach((d) => arr.push({ id: d.id, ...d.data() }));
+    arr.sort((a, b) => b.versi - a.versi);
+
+    if (arr.length === 0) {
       box.innerHTML = "<p style='color:var(--text-muted);font-size:14px;margin:0;'>Belum ada paket APK di database.</p>";
       return;
     }
-    arr.forEach(a => {
+    arr.forEach((a) => {
       box.innerHTML += `
       <div class="flex-group">
-        <span>📦 <b>v${a.versi}</b> - ${a.nama}</span>
+        <span>📦 <b>v${escapeHtml(String(a.versi))}</b> - ${escapeHtml(a.nama)}</span>
         <button class="btn-red btn-small" onclick="hapusAPK('${a.id}')">🗑️ Hapus</button>
       </div>`;
     });
@@ -221,26 +266,26 @@ function loadApkAdmin(){
 }
 
 window.hapusAPK = async (docId) => {
-  if(confirm("Hapus APK ini dari daftar aplikasi publik?")) {
+  if (confirm("Hapus APK ini dari daftar aplikasi publik?")) {
     await deleteDoc(doc(db, "apk", docId));
   }
 };
 
-function loadDevices(){
+function loadDevices() {
   const box = document.getElementById("deviceList");
   onSnapshot(collection(db, "devices"), (snap) => {
     box.innerHTML = "";
-    snap.forEach(d => {
-      let data = d.data();
-      let statusColor = data.status === 'approved' ? varName('--green') : (data.status === 'banned' ? varName('--red') : varName('--orange'));
-      
+    snap.forEach((d) => {
+      const data = d.data();
+      const statusColor = data.status === "approved" ? varName("--green") : (data.status === "banned" ? varName("--red") : varName("--orange"));
+
       box.innerHTML += `
       <div class="card" style="border-left: 5px solid ${statusColor}; margin-bottom:10px;">
-        👤 Penyewa: <b>${data.nama_penyewa || 'Anonim'}</b><br>
-        📱 Device ID: <small style="color:var(--text-muted);">${d.id}</small><br>
-        ⚪ Status Sesi: <b style="color:${statusColor}">${data.status.toUpperCase()}</b><br>
-        🔑 PIN Akses: <b>${data.pin || '-'}</b><br>
-        <button class="btn-blue btn-small" onclick="isi('${d.id}', '${data.pin || ''}')" style="margin-top:10px;">Pilih HP Ini</button>
+        👤 Penyewa: <b>${escapeHtml(data.nama_penyewa || "Anonim")}</b><br>
+        📱 Device ID: <small style="color:var(--text-muted);">${escapeHtml(d.id)}</small><br>
+        ⚪ Status Sesi: <b style="color:${statusColor}">${escapeHtml((data.status || "").toUpperCase())}</b><br>
+        🔑 PIN Akses: <b>${escapeHtml(data.pin || "-")}</b><br>
+        <button class="btn-blue btn-small" onclick="isi('${d.id}', '${escapeHtml(data.pin || "")}')" style="margin-top:10px;">Pilih HP Ini</button>
       </div>`;
     });
   });
@@ -250,19 +295,19 @@ function varName(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-function loadUsers(){
+function loadUsers() {
   const box = document.getElementById("userList");
   onSnapshot(collection(db, "kontak"), (snap) => {
     box.innerHTML = "";
-    snap.forEach(d => {
-      let u = d.data();
-      box.innerHTML += `<div class="flex-group"><span>👤 <b>${u.nama}</b> (HP: ${u.hp})</span></div>`;
+    snap.forEach((d) => {
+      const u = d.data();
+      box.innerHTML += `<div class="flex-group"><span>👤 <b>${escapeHtml(u.nama)}</b> (HP: ${escapeHtml(u.hp)})</span></div>`;
     });
   });
 }
 
-window.isi = (id, currentPin) => { 
-  deviceInput.value = id; 
+window.isi = (id, currentPin) => {
+  deviceInput.value = id;
   pinInput.value = currentPin;
 };
 </script>
